@@ -10,22 +10,24 @@ import fs from "fs"
 import qrcode from "qrcode-terminal"
 import express from "express"
 
-const logger = pino({ level: "silent" })
 const app = express()
-const PORT = 3000
+
+// Use host-provided port OR fallback to 3000
+const PORT = process.env.PORT || 3000
 
 app.get("/", (req, res) => {
-  res.send("🤖 GibborLee Bot is running")
+  res.send("🤖 GibborLee Bot is LIVE")
 })
 
-// optional health check route
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() })
+  res.send("OK")
 })
 
 app.listen(PORT, () => {
   console.log(`🌐 Server running on port ${PORT}`)
 })
+
+const logger = pino({ level: "silent" })
 
 // ================= CONFIG =================
 const PREFIX = "."
