@@ -14132,5 +14132,411 @@
     },
     "sender": "231585072828587@lid",
     "chat": "120363427409948748@g.us"
+  },
+  "AC40DE580400BD003F895136C6253625": {
+    "message": {
+      "senderKeyDistributionMessage": {
+        "groupId": "120363230243122300@g.us",
+        "axolotlSenderKeyDistributionMessage": "MwicgP/EAxBgGiApm3TjE3V1HTlaNBQ7A/XcgsDCO2s0+YrplrujupafiSIhBRea/0Zzah1/JecPNDoUeI7OS4RR+s9bHkB6offTXQws"
+      },
+      "imageMessage": {
+        "url": "https://mmg.whatsapp.net/v/t62.7118-24/590384947_1268382254931294_227711479511880315_n.enc?ccb=11-4&oh=01_Q5Aa4QEt-JgsADw6ZCDQX6qhAwoHnCJj13JBF9YWvNJBgPUdBw&oe=6A12F1AE&_nc_sid=5e03e0&mms3=true",
+        "mimetype": "image/jpeg",
+        "caption": "H@F sound speaker\ncarton & charger cord \nprice ... 24k\nlocation ... poly nekede",
+        "fileSha256": "P8WVgc34LHM4tS5+xhiR5XMIquVIEBZ4RYNoBUi5R+U=",
+        "fileLength": "128968",
+        "height": 1040,
+        "width": 780,
+        "mediaKey": "MunAZpPqlJbLyH+d02I9CPKEoklCTQC03bO9q2Oyxj8=",
+        "fileEncSha256": "49chVbT3rW1tp1u3amyulT0n/kfS4ikpvsAWk/3aR/Y=",
+        "directPath": "/v/t62.7118-24/590384947_1268382254931294_227711479511880315_n.enc?ccb=11-4&oh=01_Q5Aa4QEt-JgsADw6ZCDQX6qhAwoHnCJj13JBF9YWvNJBgPUdBw&oe=6A12F1AE&_nc_sid=5e03e0&_nc_hot=1777046487",
+        "mediaKeyTimestamp": "1776853720",
+        "jpegThumbnail": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wgARCABIAEcDASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAAQCAwUBBv/EABgBAQEBAQEAAAAAAAAAAAAAAAIBAAME/9oADAMBAAIQAxAAAAAalIuC7tcTOe4IK9Z5FUXEyanKVHqKIa6FmXKZ23M7dpiYg1k+hx+nNWLtJ60k65SUdlFMtKNTmdDj3eyNZFax3D5L6OmqevBkXn8vWEd4C4dkGrDQRvgUf//EAB0RAAICAgMBAAAAAAAAAAAAAAABAhEQEiAhMVH/2gAIAQIBAT8AcbFF4Xtj7E6E/mLKFGLNUvGaCh0VQnwQlmij/8QAHhEBAQADAAEFAAAAAAAAAAAAAQACERIxECAhQWH/2gAIAQMBAT8AGM9ezVo+7zat3WRdL5Lr8nMj5uQ9BizVZyZyYybtlv/EACgQAAICAQMCBQUBAAAAAAAAAAECAAMRBBIhEzEFIkFRcRQyQmGB4f/aAAgBAQABPwCumxHLYPECWOO0NbbcY7zoAZxk4lDKlIGP9mvLWOUUcAZmmd/p18ucS0dQbQnzNHStFuSOSOJv6R8zZ+YL3HPAE+ob2BHvF1CjyjuTDcgwCs6ibs7BBYgBAwP0Iqn7tw5nTYvky20A5IyY97MCCfWJqAacZ7CI5LA5gvG/DGC8gcnMS49TJjXc8HiDWsqqAMZ9TLHNiwLgcmB9pwsNu14zMWzmdQAZyTA+eSYLiT+o9maqx6zU6LYpdHAA9DLLSCQDxFtUHvG8xLZhbCZlTZBzLDnGJSrMQo7maxDTaqH0WamoWVEHtH0atk9ovgzWVh1cYPvD4Tap8rKfgx/CdWPxz/YdDq0/BoKdSOCjY+J4bXUibmXD/ueJgvZ1AOBxHtXeEzDVW3dRNbuTTYqGMd8TrMrZDEGU+I2Lw/mEq1dVvAOD7GGWkggKBLqDeAnYepmr5bqK+CImtZWAZv7K9UrrjvNfp0ba1SkEnmWU3UnzKSPcRLCTwDmaF327LDk4yIcPfkOfL6RRhfmWXswxmLvdsLNlg5LHM6lq9rDPq7wPvz8xNZYhyFTPxK/ErV/Bf5NJqmut2isDPcyyxEHJn//+AAMA/9k=",
+        "contextInfo": {
+          "forwardingScore": 1,
+          "isForwarded": true,
+          "pairedMediaType": "NOT_PAIRED_MEDIA",
+          "forwardOrigin": "UNKNOWN"
+        }
+      },
+      "messageContextInfo": {
+        "messageSecret": "MYLHkY2Y4LJ8G6w2IzpmqmCfb6pUGtgyS1em6HkYbog="
+      }
+    },
+    "sender": "255421990350908@lid",
+    "chat": "120363230243122300@g.us"
+  },
+  "AC4D23B179C87CE6D3BAEBE11CCD9069": {
+    "message": {
+      "senderKeyDistributionMessage": {
+        "groupId": "120363421862336193@g.us",
+        "axolotlSenderKeyDistributionMessage": "MwiN0aP0BRAAGiANMYq6uM4dIfYJxzCVJcjCiLwd1ghcbh7ZXHwBLkE4LCIhBTMgr+u4ThEQNeac34ojIOG2prbPPByGz4px1n0cJ45o"
+      },
+      "messageContextInfo": {
+        "messageSecret": "Ysv7B1lno6GNAEuR66GjEIm7ZbbnQAC8GnFfLsGrRzs="
+      },
+      "groupStatusMentionMessage": {
+        "message": {
+          "protocolMessage": {
+            "key": {
+              "remoteJid": "status@broadcast",
+              "fromMe": true,
+              "id": "AC7ECE61ADCF018989B2F1477A8B00FB"
+            },
+            "type": "STATUS_MENTION_MESSAGE"
+          }
+        }
+      }
+    },
+    "sender": "200047362859104@lid",
+    "chat": "120363421862336193@g.us"
+  },
+  "2A1D35E1B32F6E54818A": {
+    "message": {
+      "conversation": ".menu",
+      "messageContextInfo": {
+        "messageSecret": "FVYVOVfsBIyqywgTbdd1BUUIClgB9pbViCidDMWXkz4="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB08403701EA03106F774": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A1D35E1B32F6E54818A",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047156183"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0511DA7AF93E25D65EA": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "\n╔══════════════════════╗\n║ 🤖  𝗚𝗜𝗕𝗕𝗢𝗥𝗟𝗘𝗘 𝗕𝗢𝗧 𝗠𝗘𝗡𝗨  ║\n╚══════════════════════╝\n\n🔥 𝗣𝗥𝗢𝗧𝗘𝗖𝗧𝗜𝗢𝗡\n━━━━━━━━━━━━━━━━━━\n🛡️ .antilink on/off   ➤ Block links\n🧠 .antidelete on/off  ➤ Restore deleted msgs\n⚙️ .settings           ➤ View bot settings\n\n👥 𝗚𝗥𝗢𝗨𝗣 𝗖𝗢𝗡𝗧𝗥𝗢𝗟\n━━━━━━━━━━━━━━━━━━\n🔒 .lock              ➤ Admin-only chat\n🔓 .unlock            ➤ Everyone can chat\n👢 .kick              ➤ Remove member\n⬆️ .promote           ➤ Promote admin\n⬇️ .demote            ➤ Demote admin\n⚠️ .warn              ➤ Warn user (3 = kick)\n\n📢 𝗧𝗔𝗚 𝗙𝗘𝗔𝗧𝗨𝗥𝗘𝗦\n━━━━━━━━━━━━━━━━━━\n📣 .tagall            ➤ Mention everyone\n📌 .hidetag           ➤ Hidden tag message\n\n🎭 𝗠𝗘𝗗𝗜𝗔 𝗧𝗢𝗢𝗟𝗦\n━━━━━━━━━━━━━━━━━━\n👁️ .vv                ➤ Save view-once media\n🖼️ .pp                ➤ HD profile picture\n\n👑 𝗢𝗪𝗡𝗘𝗥 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦\n━━━━━━━━━━━━━━━━━━\n➕ .addowner          ➤ Add bot owner\n➖ .delowner          ➤ Remove owner\n👑 .owners            ➤ Show all owners\n🆔 .whoami            ➤ Show your JID\n\n━━━━━━━━━━━━━━━━━━\n💡 Powered by GibborLee Bot Engine\n",
+        "contextInfo": {
+          "stanzaId": "2A1D35E1B32F6E54818A",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "conversation": ".menu"
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0FE512A42EDF9E82910": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A1D35E1B32F6E54818A",
+          "participant": "79921053491262@lid"
+        },
+        "text": "✅",
+        "senderTimestampMs": "1777047156955"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "2A9B9975065ECC4AEC0E": {
+    "message": {
+      "conversation": ".lock",
+      "messageContextInfo": {
+        "messageSecret": "Gfaqu9p+GG5A2uj6MO8iZ4+ZAHQgjydm++WGs15D3nI="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0C2F0FF0C2F9095C98C": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A9B9975065ECC4AEC0E",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047514253"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB001198C753A06804056": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "🔒 Group locked (admins only)",
+        "contextInfo": {
+          "stanzaId": "2A9B9975065ECC4AEC0E",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "conversation": ".lock"
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0C5FC336988021F4BE9": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A9B9975065ECC4AEC0E",
+          "participant": "79921053491262@lid"
+        },
+        "text": "✅",
+        "senderTimestampMs": "1777047515596"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "2A3289B749FA5A02FA73": {
+    "message": {
+      "extendedTextMessage": {
+        "text": ".vv"
+      },
+      "messageContextInfo": {
+        "messageSecret": "hpy8xPzuuIp+DMb5hl94NnFLmst7eRgZ0wjsjO4+nJw="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB05DFCB6C7044CA04CE3": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A3289B749FA5A02FA73",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047536018"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB09D8CD97A45D12E6370": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "Error",
+        "contextInfo": {
+          "stanzaId": "2A3289B749FA5A02FA73",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "extendedTextMessage": {
+              "text": ".vv"
+            }
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "2A3FB5EA53E812423C8C": {
+    "message": {
+      "conversation": ".owners",
+      "messageContextInfo": {
+        "messageSecret": "BFj20g1weB8N8ymQMY8uyl1q0XcK9RUKbswAvXwkljk="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0C3BFE7722C97971859": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A3FB5EA53E812423C8C",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047601674"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0770159111D26922C87": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "👑 Owners:\n@2347044625110\n@79921053491262\n@231585072828587",
+        "contextInfo": {
+          "stanzaId": "2A3FB5EA53E812423C8C",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "conversation": ".owners"
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0EEB577E8BF366C9687": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A3FB5EA53E812423C8C",
+          "participant": "79921053491262@lid"
+        },
+        "text": "✅",
+        "senderTimestampMs": "1777047602391"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "2A18B2E08F81239DEE28": {
+    "message": {
+      "extendedTextMessage": {
+        "text": ".vv"
+      },
+      "messageContextInfo": {
+        "messageSecret": "somEvaOOefVVzupOOfneIHCmND2eH/QGo7zyho7xfVw="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB04A76FD9E34E70617E7": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A18B2E08F81239DEE28",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047621479"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0128A9905DBF27B1543": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "Error",
+        "contextInfo": {
+          "stanzaId": "2A18B2E08F81239DEE28",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "extendedTextMessage": {
+              "text": ".vv"
+            }
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "2A33948A46A0543796C0": {
+    "message": {
+      "extendedTextMessage": {
+        "text": ".vv"
+      },
+      "messageContextInfo": {
+        "messageSecret": "h1fltSQ8xBPHqWSxmFpzjYBxnm8DVqbyJVpwnwuLlCU="
+      }
+    },
+    "sender": "79921053491262@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0D643C248CF4D2186A2": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A33948A46A0543796C0",
+          "participant": "79921053491262@lid"
+        },
+        "text": "⏳",
+        "senderTimestampMs": "1777047773103"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB093F1B9D598DA2EFE30": {
+    "message": {
+      "imageMessage": {
+        "url": "https://mmg.whatsapp.net/o1/v/t24/f2/m235/AQM6rXoLSAQUAt9KHydDYVtD6jaGaS7NluLCxRAI7cZJ8JQ81z32WhQvrWGzDOr8PDDIyEvs2odgKpvwvYSTq41aVDGGeHhfFguJzhlhBA?ccb=9-4&oh=01_Q5Aa4QHvDF5RKozPHvz2sTbTlU6rFyxtNfSk8Ywkn0dbhpg__Q&oe=6A13242F&_nc_sid=e6ed6c&mms3=true",
+        "mimetype": "image/jpeg",
+        "caption": "👁️ View-once recovered",
+        "fileSha256": "c/QofVdrhoUsQSAslL/TBZ9/raCznbepwXIrigXsmEk=",
+        "fileLength": "58498",
+        "height": 1280,
+        "width": 591,
+        "mediaKey": "n30yCDyw01BMr7HfJkx2Wp+/pmpIYq2/n73K7+sB46w=",
+        "fileEncSha256": "+Sovf0PHigyJqWgbZ/BsNndTthf1VQdpeWmOdjrqMB8=",
+        "directPath": "/o1/v/t24/f2/m235/AQM6rXoLSAQUAt9KHydDYVtD6jaGaS7NluLCxRAI7cZJ8JQ81z32WhQvrWGzDOr8PDDIyEvs2odgKpvwvYSTq41aVDGGeHhfFguJzhlhBA?ccb=9-4&oh=01_Q5Aa4QHvDF5RKozPHvz2sTbTlU6rFyxtNfSk8Ywkn0dbhpg__Q&oe=6A13242F&_nc_sid=e6ed6c",
+        "mediaKeyTimestamp": "1777047779",
+        "jpegThumbnail": "/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABGACADASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAQIAAwUEBv/EAC4QAAIBAwIFAgMJAAAAAAAAAAECEQADIQQSBTFBUWETIjKBkRQjQkNScqHB0f/EABYBAQEBAAAAAAAAAAAAAAAAAAABAv/EABgRAQEBAQEAAAAAAAAAAAAAAAABEQIx/9oADAMBAAIRAxEAPwD22zc28tcXPw7sU1xygBCO/wC0TTVncY1Wo0+nP2UorgbiWWceB3oO9HLzKMsfqHOh6fuDb3wZicVi8B46eI6m5pbiEOi7gxEE95HzFbtSXVssuVztrLa3DbKXiQYkWmI+tcHFrdviOnNtLmosOPxCwxBHY+K1zgAkgA4yaW7ZNxWRz7T0pSXLrG4Tp7HDN5ZtRduuAC3oMAI7CtVNSjmAHB8oR1intWfSUC3AQkmAO9WQSDmY55qxeur1bb6S4UMK7gEZAkfWnVw4Kqytjoc0rNH5pSBnl/dEKzKCLrEHr7f8oyZF2IqqoAUQKAUqG5mcmTUCvPxt/FEH4hMn5YoKmD+qSGubdggKFiZ89aI3kgffCesLio4UsQUDHaOZGRPKmtExtCbAPINBYBC8yaEkzIIx1iidwGM+KUA5O2POM0FbLJJhcqBlZ60UGxpG2DzhIqVKCzePNAtk9qlSg//Z"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "231585072828587@lid"
+  },
+  "3EB0D2DF7313DA8A98A8D0": {
+    "message": {
+      "extendedTextMessage": {
+        "text": "📩 Sent to your DM",
+        "contextInfo": {
+          "stanzaId": "2A33948A46A0543796C0",
+          "participant": "79921053491262@lid",
+          "quotedMessage": {
+            "extendedTextMessage": {
+              "text": ".vv"
+            }
+          }
+        }
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
+  },
+  "3EB0A999545618A8BB3D59": {
+    "message": {
+      "reactionMessage": {
+        "key": {
+          "remoteJid": "120363427409948748@g.us",
+          "fromMe": true,
+          "id": "2A33948A46A0543796C0",
+          "participant": "79921053491262@lid"
+        },
+        "text": "✅",
+        "senderTimestampMs": "1777047779173"
+      }
+    },
+    "sender": "231585072828587@lid",
+    "chat": "120363427409948748@g.us"
   }
 }

@@ -225,39 +225,44 @@ sock.ev.on("connection.update", (u) => {
 
       // ===== MEDIA =====
       vv: async () => {
-        if (!isOwner) return reply("Owner only")
+  if (!isOwner) return reply("Owner only")
 
-        const quoted =
-          msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+  if (!quoted) return reply("Reply to a view-once message")
 
-        if (!quoted) return reply("Reply to a view-once message")
+  const type = Object.keys(quoted)[0]
+  const content = quoted[type]
 
-        const vmsg =
-          quoted?.viewOnceMessage?.message ||
-          quoted?.viewOnceMessageV2?.message
+  if (!content) return reply("Invalid message")
 
-        if (!vmsg) return reply("Not view-once")
+  try {
+    const stream = await downloadContentFromMessage(
+      content,
+      type.replace("Message", "")
+    )
 
-        const type = Object.keys(vmsg)[0]
-        const media = vmsg[type]
+    let buffer = Buffer.from([])
+    for await (const chunk of stream) {
+      buffer = Buffer.concat([buffer, chunk])
+    }
 
-        const stream = await downloadContentFromMessage(
-          media,
-          type.replace("Message", "")
-        )
+    let sendType = "document"
+    if (type === "imageMessage") sendType = "image"
+    else if (type === "videoMessage") sendType = "video"
+    else if (type === "audioMessage") sendType = "audio"
 
-        let buffer = Buffer.from([])
-        for await (const chunk of stream) {
-          buffer = Buffer.concat([buffer, chunk])
-        }
+    await sock.sendMessage(sender, {
+      [sendType]: buffer,
+      caption: "👁️ View-once recovered"
+    })
 
-        await sock.sendMessage(sender, {
-          [type.includes("image") ? "image" : "video"]: buffer,
-          caption: "👁️ View-once recovered"
-        })
+    reply("📩 Sent to your DM")
 
-        reply("📩 Sent to your DM")
-      },
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to extract media")
+  }
+},
 
       pp: async () => {
         if (!isOwner) return reply("Owner only")
