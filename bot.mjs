@@ -148,21 +148,23 @@ sock.ev.on("connection.update", async (u) => {
 
       console.log("🤖 GibborLee connected as:", botId)
 
-      setTimeout(() => {
-        sock.sendPresenceUpdate("available")
-      }, 3000)
-    }
+setInterval(() => {
+  sock.sendPresenceUpdate("available")
+}, 20000)
 
-    if (connection === "close") {
-      const reason = lastDisconnect?.error?.output?.statusCode
+   if (connection === "close") {
+  const reason = lastDisconnect?.error?.output?.statusCode
 
-      if (reason !== DisconnectReason.loggedOut) {
-        console.log("🔄 Reconnecting...")
-        start(session)
-      } else {
-        console.log("❌ Logged out. Delete auth folder.")
-      }
+  console.log("Disconnected:", reason)
+
+  if (reason !== DisconnectReason.loggedOut) {
+    start(session)
+  } else {
+    console.log("❌ Session expired. Delete auth/ and re-scan.")
+  }
+}
     }
+    
   })
 
   let warns = {}
