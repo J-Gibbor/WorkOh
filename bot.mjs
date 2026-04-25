@@ -62,8 +62,6 @@ const COMMANDS = {
   approve: "✅ Accept join request",
   reject: "❌ Decline join request",
 
-  welcome: "👋 Toggle welcome messages",
-  goodbye: "👋 Toggle goodbye messages",
 
   tagall: "📣 Mention all members",
   hidetag: "📌 Send hidden mention message",
@@ -99,8 +97,6 @@ const getSettings = (jid) => {
     GROUP_SETTINGS[jid] = { 
       antidelete: false, 
       antilink: false,
-      welcome: true,
-      goodbye: true,
       antistatus: false,
       antistatus_mention: false
     }
@@ -231,64 +227,6 @@ if (settings.antistatus || settings.antistatus_mention) {
     console.log("Anti-status error:", e)
   }
 }
-
-  // ====== WELCOME AND GOODBYE EVENTS ====
-
-sock.ev.on("group-participants.update", async (update) => {
-  try {
-    const { id, participants, action } = update
-
-    if (!id || !participants || !action) return
-
-    const settings = getSettings(id)
-
-    let meta
-    try {
-      meta = await sock.groupMetadata(id)
-    } catch (e) {
-      console.log("Metadata error:", e)
-      return
-    }
-
-    const groupName = meta.subject
-
-    for (const user of participants) {
-      const name =
-        typeof user === "string"
-          ? user.split("@")[0]
-          : String(user).split("@")[0]
-
-
-      // ===== WELCOME =====
-      if (action === "add" && settings.welcome) {
-        await sock.sendMessage(id, {
-          text: `╔═══〔 👋 WELCOME 〕═══╗
-┃ Hello @${name} 🎉
-┃ Welcome to *${groupName}*
-┃
-┃ 📜 Follow group rules
-┃ 🚫 No links or spam ❌
-┃ 🤝 Respect everyone
-╚═══════════════════╝`,
-          mentions: [jid]
-        })
-      }
-
-      // ===== GOODBYE =====
-      if (action === "remove" && settings.goodbye) {
-        await sock.sendMessage(id, {
-          text: `╔═══〔 👋 GOODBYE 〕═══╗
-┃ @${name} left the group 😢
-┃ We will miss you!
-╚═══════════════════╝`,
-          mentions: [jid]
-        })
-      }
-    }
-  } catch (e) {
-    console.log("❌ Welcome/Goodbye Error:", e)
-  }
-})
 
 
     // ================= GROUP META =================
@@ -599,28 +537,6 @@ if (isBot && !BOT_OWNERS.includes(sender)) return
             BOT_OWNERS.map((o) => "@" + o.split("@")[0]).join("\n")
         )
       },
-
-      // ==== WELCOME AND GOODBYE
-      welcome: async () => {
-  if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin only")
-
-  settings.welcome = args[0] === "on"
-  saveSettings()
-
-  reply(`👋 Welcome messages ${settings.welcome ? "ON" : "OFF"}`)
-},
-
-goodbye: async () => {
-  if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin only")
-
-  settings.goodbye = args[0] === "on"
-  saveSettings()
-
-  reply(`👋 Goodbye messages ${settings.goodbye ? "ON" : "OFF"}`)
-},
-    
 
       // ===== TAG =====
      tageveryone: async () => {
@@ -1058,7 +974,6 @@ menu: async () => {
 • group
 • management
 • join
-• welcome
 • tag
 • media
 • owner
@@ -1085,7 +1000,6 @@ menu: async () => {
     group: ["lock", "unlock", "kick", "add", "promote", "demote", "warn", "delete", "del"],
     management: ["setname", "setdesc", "groupinfo", "viewadmins", "grouplink", "revoke"],
     join: ["approve", "approveall", "reject"],
-    welcome: ["welcome", "goodbye"],
     tag: ["tagall", "hidetag", "tagonline"],
     media: ["vv", "pp"],
     owner: ["addowner", "delowner", "owners"],
