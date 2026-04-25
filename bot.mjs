@@ -10,6 +10,7 @@ import fs from "fs"
 import express from "express"
 import QRCode from "qrcode"
 
+let CURRENT_QR = ""
 const app = express()
 
 // Use host-provided port OR fallback to 3000
