@@ -176,7 +176,6 @@ sock.ev.on("connection.update", async (u) => {
     }
   }
 })
-}
 
 
   let warns = {}
@@ -1055,6 +1054,9 @@ menu: async () => {
 app.listen(PORT, () => {
   console.log(`🌐 Server running on port ${PORT}`)
 })
+
+return sock
+}
 
 // ================= MULTI SESSION =================
 ;["session1", "session2"].forEach(start)
