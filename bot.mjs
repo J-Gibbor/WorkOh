@@ -207,11 +207,12 @@ async function start(session) {
 
         const botId = normalizeJid(sock.user.id)
 
-        if (!BOT_OWNERS.length) {
-          BOT_OWNERS.push(botId)
-          saveOwners()
-        }
+if (!BOT_OWNERS.includes(botId)) {
+  BOT_OWNERS.push(botId)
+  saveOwners()
+}
 
+console.log("👑 Owners:", BOT_OWNERS)
         console.log("🤖 Logged in as:", botId)
 
         // ✅ PREVENT MULTIPLE INTERVALS
@@ -262,7 +263,7 @@ async function start(session) {
     const isGroup = jid.includes("@g.us")
     const sender = normalizeJid(msg.key.participant || msg.key.remoteJid)
     const isDM = !isGroup
-    const settings = getSettings(jid || "default")
+    const settings = getSettings("global")
     const group_settings = getGroup_Settings(jid || "default")
 
     if (settings.groupOnly && !isGroup) return
@@ -325,35 +326,20 @@ if (group_settings.antistatus || group_settings.antistatus_mention) {
         .map((p) => p.id)
     }
 
-    const isOwner = BOT_OWNERS.map(normalizeJid).includes(
-      normalizeJid(sender)
-    )
+
+    const cleanSender = normalizeJid(sender)
+
+// normalize ALL owners once
+const normalizedOwners = BOT_OWNERS.map(o => normalizeJid(o))
+
+const isOwner = normalizedOwners.includes(cleanSender)
+
     const isAdmin = groupAdmins.includes(sender)
 
-    // ================= SAFE DM CONTROL =================
-  const isCommand = body.startsWith(PREFIX)
-
-  if (!body.startsWith(PREFIX)) return
-
-if (isDM && !body.startsWith(PREFIX)) return
-
-// allow DM commands, but restrict spam if needed
-if (isDM) {
-  if (!isCommand) return
-}
 
     // ================= SAVE MESSAGE =================
     // ===== LIGHTWEIGHT MESSAGE STORE (ANTI-MEMORY LEAK) =====
     const MAX_STORE = 5000
-
-    sock.ev.on("messages.upsert", async ({ messages }) => {
-      try {
-        const msg = messages[0]
-        if (!msg.message) return
-
-        const jid = msg.key.remoteJid || ""
-        const sender = normalizeJid(msg.key.participant || jid)
-
         // ===== SAFE STORE LIMIT =====
         if (Object.keys(MSG_STORE).length > MAX_STORE) {
           MSG_STORE = {} // reset to prevent memory crash
@@ -367,12 +353,6 @@ if (isDM) {
 
         // 💡 SAVE LESS FREQUENTLY (reduce disk load)
         if (Math.random() < 0.1) saveStore()
-
-      } catch (e) {
-        console.log("Message handler error:", e)
-      }
-    })
-    
 
     // ================= VIEW-ONCE AUTO SAVE =================
     const vmsg =
@@ -452,26 +432,37 @@ if (isDM) {
 
 
     // ================= COMMAND =================
-    if (!body.startsWith(PREFIX)) return
+ // ================= COMMAND HANDLER =================
 
-// prevent loop spam
-if (isBot && !BOT_OWNERS.includes(sender)) return
+const isCommand = body.startsWith(PREFIX)
+if (!isCommand) return
 
-    const args = body.slice(1).trim().split(/ +/)
-    const cmd = args.shift().toLowerCase()
+// ===== PARSE =====
+const args = body.slice(1).trim().split(/ +/)
+const cmd = args.shift()?.toLowerCase() || ""
 
-    const botMode = settings.mode || "private"
-if (botMode === "private" && !isOwner) return
+// ================= MODES =================
+const botMode = settings.mode || "private"
 
-
-// 👥 GROUP ONLY MODE
-if (settings.groupOnly && !isGroup) {
-  return // blocks all DM usage
+// ===== MODE CONTROL =====
+if (botMode === "private" && !isOwner) {
+  return reply("🔒 Bot is in private mode (owner only)")
 }
 
-// 📵 DM BLOCK MODE
-if (settings.dmDisabled && !isGroup) {
-  return // blocks all DM messages completely
+if (settings.groupOnly && !isGroup) {
+  return reply("👥 Bot works only in groups")
+}
+
+if (settings.dmDisabled && isDM && !isOwner) {
+  return reply("📵 Bot is disabled in private chat")
+}
+
+// ===== PREVENT LOOP =====
+if (msg.key.fromMe && !isOwner) return
+
+// ================= OPTIONAL DEBUG =================
+if (isDM) {
+  console.log(`📩 DM CMD: ${cmd} from ${sender}`)
 }
     
     const commands = {
@@ -680,7 +671,7 @@ if (settings.dmDisabled && !isGroup) {
   }
 
   settings.mode = newMode
-  save()
+  saveSettings()
 
   reply(`✅ Bot mode changed to: *${newMode.toUpperCase()}*`)
 },
