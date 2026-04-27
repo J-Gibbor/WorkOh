@@ -25,8 +25,6 @@ const logger = pino({ level : "silent"})
 // Use host-provided port OR fallback to 3000
 const PORT = process.env.PORT || 3000
 
-const dmCooldown = new Map()
-
  let qrCount = 0
 
 app.get("/", (req, res) => {
@@ -128,11 +126,10 @@ const COMMANDS = {
 
   vv: "👁️ Recover view-once media",
   pp: "🖼️ Get profile picture HD",
-
   sticker: "🖼️ Convert image to sticker",
   stickergif: "🎥 Convert video to animated sticker",
-  memesticker: "😂 Text → meme sticker",
-  captionsticker: "🖌️ Caption → sticker",
+  memeSticker: "😂 Text → meme sticker",
+  captionSticker: "🖌️ Caption → sticker",
   stickerpack: "🔥 Create sticker pack",
 
   addowner: "👑 Add bot owner",
@@ -272,7 +269,7 @@ async function start(session) {
       auth: state,
       logger,
       printQRInTerminal: false,
-      markOnlineOnConnect: true,
+      markOnlineOnConnect: false,
       emitOwnEvents: true,
       syncFullHistory: false,
       browser: ["Chrome (Linux)", "Chrome", "120.0.0"],
@@ -324,14 +321,14 @@ console.log("👑 Owners:", BOT_OWNERS)
         console.log("🤖 Logged in as:", botId)
 
         // ✅ PREVENT MULTIPLE INTERVALS
-        if (!keepAliveStarted) {
-          keepAliveStarted = true
-          setInterval(() => {
-            try {
-              sock.sendPresenceUpdate("unavailable")
-            } catch {}
-          }, 20000)
-        }
+        // if (!keepAliveStarted) {
+        //   keepAliveStarted = true
+        //   setInterval(() => {
+        //     try {
+        //       sock.sendPresenceUpdate("unavailable")
+        //     } catch {}
+        //   }, 20000)
+        // }
       }
 
       if (connection === "close") {
@@ -394,14 +391,6 @@ const cleanSender = normalizeJid(sender)
     const settings = getSettings("global")
     const group_settings = getGroup_Settings(jid || "default")
 
-    // 🔥 FORCE DM PUSH RECOGNITION
-if (isDM) {
-  try {
-    await sock.sendMessage(jid, {
-      text: "" // silent ping (forces notification refresh internally)
-    })
-  } catch {}
-}
 
 const body =
   msg.message?.conversation ||
@@ -426,53 +415,6 @@ const reply = async (text) => {
 
     const getTarget = () =>
       msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
-
-
-const text =
-  msg.message?.conversation ||
-  msg.message?.extendedTextMessage?.text ||
-  msg.message?.imageMessage?.caption ||
-  msg.message?.videoMessage?.caption ||
-  "📎 media"
-
-// 🔔 REAL PUSH LOGGER
-console.log(`
-🔔 NEW MESSAGE NOTIFICATION
-━━━━━━━━━━━━━━━━━━
-📩 Type: ${isDM ? "DM" : "GROUP"}
-👤 From: ${pushName}
-🆔 JID: ${sender}
-💬 Text: ${text.slice(0, 80)}
-⏰ Time: ${new Date().toLocaleTimeString()}
-━━━━━━━━━━━━━━━━━━
-`)
-
-if (isDM && !msg.key.fromMe) {
-  const body =
-    msg.message?.conversation ||
-    msg.message?.extendedTextMessage?.text ||
-    ""
-
-  // ignore empty
-  if (!body) return
-
-  // auto reply logic
-  const autoReply = `
-🤖 *Auto Reply System*
-
-Hello 👋
-I am GIBBORLEE BOT.
-
-⚡ Your message has been received:
-"${body.slice(0, 50)}"
-
-⏳ Type .menu to interact with me
-`
-
-  await sock.sendMessage(jid, {
-    text: autoReply
-  }, { quoted: msg })
-}
 
     // ================= ANTI STATUS =================
 if (group_settings.antistatus || group_settings.antistatus_mention) {
@@ -702,7 +644,7 @@ if (isDM) {
       },
 
       sticker: async () => {
-        if (!isGroup) return reply("❌ Group only")
+        if (!isOwner) return reply("❌ Owner only")
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
   let mediaMessage =
@@ -726,7 +668,7 @@ if (isDM) {
 },
 
 stickergif: async () => {
-  if (!isGroup) return reply("❌ Group only")
+ if (!isOwner) return reply("❌ Owner only")
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
   let mediaMessage =
@@ -750,7 +692,7 @@ stickergif: async () => {
 },
 
 memesticker: async () => {
-  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Owner only")
   const text = args.join(" ")
   if (!text) return reply("❌ Provide text")
 
@@ -778,7 +720,7 @@ memesticker: async () => {
 },
 
 captionsticker: async () => {
-  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Owner only")
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
   const text =
@@ -811,7 +753,7 @@ captionsticker: async () => {
 },
 
 stickerpack: async () => {
-  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Owner only")
   const name = args.join(" ") || "Special Pack"
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage

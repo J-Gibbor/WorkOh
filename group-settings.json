@@ -190,5 +190,11 @@
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
+  },
+  "120363172173704036@newsletter": {
+    "antidelete": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
   }
 }
