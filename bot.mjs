@@ -269,7 +269,7 @@ async function start(session) {
       auth: state,
       logger,
       printQRInTerminal: false,
-      markOnlineOnConnect: false,
+      markOnlineOnConnect: true,
       emitOwnEvents: true,
       syncFullHistory: false,
       browser: ["Chrome (Linux)", "Chrome", "120.0.0"],
@@ -391,6 +391,14 @@ const cleanSender = normalizeJid(sender)
     const settings = getSettings("global")
     const group_settings = getGroup_Settings(jid || "default")
 
+    // 🔥 FORCE DM PUSH RECOGNITION
+if (isDM) {
+  try {
+    await sock.sendMessage(jid, {
+      text: "" // silent ping (forces notification refresh internally)
+    })
+  } catch {}
+}
 
 const body =
   msg.message?.conversation ||
