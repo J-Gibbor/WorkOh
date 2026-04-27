@@ -1,22 +1,5 @@
 {
-  "79921053491262@lid": {
-    "mode": "private",
-    "groupOnly": false,
-    "dmDisabled": false
-  },
-  "11807385202835@lid": {
-    "mode": "private",
-    "groupOnly": false,
-    "dmDisabled": false
-  },
-  "2347044625110@s.whatsapp.net": {
-    "mode": "private",
-    "groupOnly": false,
-    "dmDisabled": false
-  },
-  "231585072828587@lid": {
-    "mode": "private",
-    "groupOnly": false,
-    "dmDisabled": false
+  "global": {
+    "mode": "private"
   }
 }
