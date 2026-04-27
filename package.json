@@ -5,6 +5,7 @@
   "main": "bot.mjs",
   "type": "module",
   "scripts": {
+    "postinstall": "npm rebuild canvas",
     "build": "tsc",
     "start": "node bot.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -5,7 +5,7 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys"
 
 import sharp from "sharp"
-import { createCanvas, loadImage } from "canvas"
+import { createCanvas } from "canvas"
 import pino, { levels } from "pino"
 import fs from "fs"
 import express from "express"
@@ -1386,10 +1386,13 @@ menu: async () => {
   // ===== FULL MENU =====
   if (!section) {
 
-     const from = msg.key.remoteJid
-  const userJid = msg.key.participant || msg.key.remoteJid
-  const pushName = msg.pushName || "Unknown User"
+    const from = msg.key.remoteJid
+const userJid = msg.key.participant || msg.key.remoteJid
 
+const pushName =
+  msg.pushName ||
+  msg.name ||
+  "Unknown User"
 
   // 🧠 ROLE SYSTEM
   let role = "👤 User"
