@@ -385,6 +385,59 @@ console.log("👑 Owners:", BOT_OWNERS)
  // ================= EVENTS =================
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
+    try {
+    for (const update of updates) {
+      const reaction = update.update?.reactionMessage
+
+      if (!reaction) continue
+
+      const emoji = reaction.text
+      const key = reaction.key
+
+      // 🎯 Only trigger on specific emoji
+      if (!["🔥", "👁️", "💾"].includes(emoji)) return
+
+      // 🔍 Get original message
+      const original = MSG_STORE[key.id]
+      if (!original) return
+
+      const msgData = original.message
+
+      const vmsg =
+        msgData?.viewOnceMessage?.message ||
+        msgData?.viewOnceMessageV2?.message
+
+      if (!vmsg) return // not view-once
+
+      const type = Object.keys(vmsg)[0]
+      const media = vmsg[type]
+
+      // 📥 Download media
+      const stream = await downloadContentFromMessage(
+        media,
+        type.replace("Message", "")
+      )
+
+      let buffer = Buffer.from([])
+      for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk])
+      }
+
+      // 📤 Send to all owners
+      for (let owner of BOT_OWNERS) {
+        await sock.sendMessage(owner, {
+          [type.includes("image") ? "image" :
+           type.includes("video") ? "video" :
+           type.includes("audio") ? "audio" : "document"]: buffer,
+          caption: "🔥 View-once captured via reaction"
+        })
+
+        await new Promise(r => setTimeout(r, 1200))
+      }
+    }
+  } catch (e) {
+    console.log("Reaction handler error:", e)
+  }
     const msg = messages[0]
     const jid = msg.key.remoteJid || ""
     if (!msg.message) return
