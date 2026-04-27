@@ -860,7 +860,12 @@ stickerpack: async () => {
       },
 
       settings: async () => {
-        reply(`⚙️ SETTINGS\nAntiDelete: ${group_settings.antidelete}\nAntiLink: ${group_settings.antilink} \nBot Mode: ${settings.mode} \nAnti-Status: ${group_settings.antistatus} \Antistatus_Mention: ${group_settings.antistatus_mention}`)
+        reply(`⚙️ SETTINGS\n
+          AntiDelete: ${group_settings.antidelete}\n
+          AntiLink: ${group_settings.antilink}\n
+          Bot Mode: ${settings.mode}\n
+          Anti-Status: ${group_settings.antistatus}\n
+          Antistatus_Mention: ${group_settings.antistatus_mention}`)
       },
 
       // ===== ADMIN =====
