@@ -1118,7 +1118,6 @@ antistatusmention: async () => {
 },
 
 delete: async () => {
-  if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo
@@ -1142,7 +1141,6 @@ delete: async () => {
 },
 
 del: async () => {
-  if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo
