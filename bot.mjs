@@ -360,6 +360,7 @@ console.log("👑 Owners:", BOT_OWNERS)
         }
 
       if (connection === "close") {
+        
          const statusCode = lastDisconnect?.error?.output?.statusCode
 
     console.log("❌ Disconnected:", statusCode)
@@ -369,6 +370,15 @@ console.log("👑 Owners:", BOT_OWNERS)
       console.log("⚠️ Logged out → delete auth folder")
       return
     }
+
+      if (!reconnecting) {
+    reconnecting = true
+
+    setTimeout(() => {
+      reconnecting = false
+      start(session)
+    }, 5000)
+  }
 
     // 🔄 Safe reconnect
     console.log("🔄 Reconnecting safely in 5s...")
@@ -384,35 +394,35 @@ console.log("👑 Owners:", BOT_OWNERS)
 
  // ================= EVENTS =================
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    try {
-    for (const update of updates) {
-      const reaction = update.update?.reactionMessage
+  sock.ev.on("messages.upsert", "messages.reaction", async ({ messages }) => {
+     try {
+    for (const r of reactions) {
+      const emoji = r.reaction?.text
+      const key = r.reaction?.key
 
-      if (!reaction) continue
+      if (!emoji || !key) continue
 
-      const emoji = reaction.text
-      const key = reaction.key
+      // 🎯 trigger emoji
+      if (emoji !== "🔥") continue
 
-      // 🎯 Only trigger on specific emoji
-      if (emoji !== "👁️") return
-
-      // 🔍 Get original message
       const original = MSG_STORE[key.id]
-      if (!original) return
+      if (!original) {
+        console.log("❌ No stored message for reaction")
+        continue
+      }
+
+      if (!original.isViewOnce) {
+        console.log("⚠️ Not a view-once message")
+        continue
+      }
 
       const msgData = original.message
+      const type = Object.keys(msgData)[0]
+      const media = msgData[type]
 
-      const vmsg =
-        msgData?.viewOnceMessage?.message ||
-        msgData?.viewOnceMessageV2?.message
+      if (!media) continue
 
-      if (!vmsg) return // not view-once
-
-      const type = Object.keys(vmsg)[0]
-      const media = vmsg[type]
-
-      // 📥 Download media
+      // 📥 download media
       const stream = await downloadContentFromMessage(
         media,
         type.replace("Message", "")
@@ -423,21 +433,32 @@ console.log("👑 Owners:", BOT_OWNERS)
         buffer = Buffer.concat([buffer, chunk])
       }
 
-      // 📤 Send to all owners
+      const sendType =
+        type === "imageMessage" ? "image" :
+        type === "videoMessage" ? "video" :
+        type === "audioMessage" ? "audio" :
+        "document"
+
+      // 📤 send to owners
       for (let owner of BOT_OWNERS) {
-        await sock.sendMessage(owner, {
-          [type.includes("image") ? "image" :
-           type.includes("video") ? "video" :
-           type.includes("audio") ? "audio" : "document"]: buffer,
-          caption: "🔥 View-once captured via reaction"
-        })
+        try {
+          await sock.sendMessage(owner, {
+            [sendType]: buffer,
+            caption: "🔥 View-once captured via reaction"
+          })
+        } catch (e) {
+          console.log("Send error:", e?.message)
+        }
 
         await new Promise(r => setTimeout(r, 1200))
       }
+
+      console.log("✅ View-once recovered via reaction")
     }
   } catch (e) {
     console.log("Reaction handler error:", e)
   }
+
     const msg = messages[0]
     const jid = msg.key.remoteJid || ""
     if (!msg.message) return
@@ -555,11 +576,13 @@ if (group_settings.antistatus || group_settings.antistatus_mention) {
         if (Object.keys(MSG_STORE).length > MAX_STORE) {
           MSG_STORE = {} // reset to prevent memory crash
         }
+        
 
         MSG_STORE[msg.key.id] = {
-          message: msg.message,
+          message: vmsg || msg.message,
           sender,
-          chat: jid
+          chat: jid,
+          isViewOnce: !!vsmg
         }
 
         // 💡 SAVE LESS FREQUENTLY (reduce disk load)
