@@ -323,14 +323,14 @@ console.log("👑 Owners:", BOT_OWNERS)
         console.log("🤖 Logged in as:", botId)
 
         // ✅ PREVENT MULTIPLE INTERVALS
-        // if (!keepAliveStarted) {
-        //   keepAliveStarted = true
-        //   setInterval(() => {
-        //     try {
-        //       sock.sendPresenceUpdate("unavailable")
-        //     } catch {}
-        //   }, 20000)
-        // }
+        if (!keepAliveStarted) {
+          keepAliveStarted = true
+          setInterval(() => {
+            try {
+              sock.sendPresenceUpdate("unavailable")
+            } catch {}
+          }, 20000)
+        }
       }
 
       if (connection === "close") {
