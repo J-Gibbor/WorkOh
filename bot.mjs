@@ -244,7 +244,9 @@ async function start(session) {
       auth: state,
       logger,
       printQRInTerminal: false,
-      markOnlineOnConnect: true,
+      markOnlineOnConnect: false,
+      emitOwnEvents: true,
+      syncFullHistory: false,
       browser: ["Chrome (Linux)", "Chrome", "120.0.0"],
 
         // 🔥 stability boost
@@ -294,14 +296,14 @@ console.log("👑 Owners:", BOT_OWNERS)
         console.log("🤖 Logged in as:", botId)
 
         // ✅ PREVENT MULTIPLE INTERVALS
-        if (!keepAliveStarted) {
-          keepAliveStarted = true
-          setInterval(() => {
-            try {
-              sock.sendPresenceUpdate("available")
-            } catch {}
-          }, 20000)
-        }
+        // if (!keepAliveStarted) {
+        //   keepAliveStarted = true
+        //   setInterval(() => {
+        //     try {
+        //       sock.sendPresenceUpdate("unavailable")
+        //     } catch {}
+        //   }, 20000)
+        // }
       }
 
       if (connection === "close") {
@@ -372,8 +374,19 @@ const body =
   msg.message?.videoMessage?.caption ||
   ""
 
-    const reply = (text) =>
-      sock.sendMessage(jid, { text }, { quoted: msg })
+const reply = async (text) => {
+  try {
+    // typing indicator
+    await sock.sendPresenceUpdate("composing", jid)
+
+    await sock.sendMessage(jid, { text }, { quoted: msg })
+
+    await sock.sendPresenceUpdate("paused", jid)
+
+  } catch (e) {
+    console.log(e)
+  }
+}
 
     const getTarget = () =>
       msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
@@ -467,7 +480,8 @@ if (group_settings.antistatus || group_settings.antistatus_mention) {
           await sock.sendMessage(owner, {
             [type.includes("image") ? "image" : "video"]: buffer,
             caption: "👁️ Auto-saved view-once"
-          })
+          }) 
+          await new Promise(r => setTimeout(r, 1200))
         }
 
       } catch {}
