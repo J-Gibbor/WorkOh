@@ -696,26 +696,23 @@ memesticker: async () => {
   const text = args.join(" ")
   if (!text) return reply("❌ Provide text")
 
-  const canvas = createCanvas(512, 512)
-  const ctx = canvas.getContext("2d")
+  const svg = `
+  <svg width="512" height="512">
+    <rect width="100%" height="100%" fill="white"/>
+    <text x="50%" y="50%" font-size="40" text-anchor="middle" fill="black">
+      ${text}
+    </text>
+  </svg>`
 
-  // background
-  ctx.fillStyle = "white"
-  ctx.fillRect(0, 0, 512, 512)
+  const buffer = Buffer.from(svg)
 
-  // text styling
-  ctx.fillStyle = "black"
-  ctx.font = "bold 40px Sans"
-  ctx.textAlign = "center"
-
-  wrapText(ctx, text, 256, 256, 450, 45)
-
-  const buffer = canvas.toBuffer("image/png")
-  const sticker = await createSticker(buffer)
+  const sticker = await sharp(buffer)
+    .resize(512, 512)
+    .webp()
+    .toBuffer()
 
   await sock.sendMessage(jid, {
-    sticker: sticker,
-    ...STICKER_META
+    sticker
   }, { quoted: msg })
 },
 
