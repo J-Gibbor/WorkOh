@@ -1824,7 +1824,6 @@ ${ownerText}
 ━━━━━━━━━━━━━━━━━━━━
 ℹ️ *INFO*
 ╭───────────────╮
-│ 🏓 .ping → Bot speed
 │ 🤖 .alive → Bot status
 │ 📜 .menu → Show menu
 ╰───────────────╯
