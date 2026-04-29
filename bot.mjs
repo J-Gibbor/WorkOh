@@ -1288,82 +1288,69 @@ pack_create: async () => {
 // ADD PACK
 
 pack_add: async () => {
- pack_add: async () => {
   const name = args[0]?.toLowerCase()
   const emoji = args[1] || "🙂"
 
-  if (!name)
+  if (!name) {
     return reply("❌ Usage: .pack add <name> [emoji]")
+  }
 
   const pack = STICKER_PACKS[name]
-  if (!pack)
+  if (!pack) {
     return reply("❌ Pack not found")
+  }
 
+  // Check quoted message
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
-  let media =
-    msg.message?.imageMessage ||
-    msg.message?.videoMessage ||
-    quoted?.imageMessage ||
-    quoted?.videoMessage
+  // Detect media from direct or quoted
+  let media = null
+  let type = null
 
-  if (!media)
-    return reply("❌ Reply to image/video")
+  if (msg.message?.imageMessage) {
+    media = msg.message.imageMessage
+    type = "image"
+  } else if (msg.message?.videoMessage) {
+    media = msg.message.videoMessage
+    type = "video"
+  } else if (quoted?.imageMessage) {
+    media = quoted.imageMessage
+    type = "image"
+  } else if (quoted?.videoMessage) {
+    media = quoted.videoMessage
+    type = "video"
+  }
 
-  const type = media.imageMessage ? "image" : "video"
+  if (!media) {
+    return reply("❌ Reply to an image or video")
+  }
 
-  const stream = await downloadContentFromMessage(media, type)
+  try {
+    const stream = await downloadContentFromMessage(media, type)
 
-  let buffer = Buffer.from([])
-  for await (const chunk of stream)
-    buffer = Buffer.concat([buffer, chunk])
+    let buffer = Buffer.from([])
+    for await (const chunk of stream) {
+      buffer = Buffer.concat([buffer, chunk])
+    }
 
-  pack.stickers.push({
-    type,
-    emoji,
-    data: buffer.toString("base64")
-  })
+    if (!buffer.length) {
+      return reply("❌ Failed to download media")
+    }
 
-  saveStickerPacks()
+    // Add sticker to pack
+    pack.stickers.push({
+      type,
+      emoji,
+      data: buffer.toString("base64")
+    })
 
-  reply(`➕ Sticker added to *${name}* ${emoji}`)
-}
+    saveStickerPacks()
 
-  if (!name)
-    return reply("❌ Usage: .pack add <name> [emoji]")
-
-  const pack = STICKER_PACKS[name]
-  if (!pack)
-    return reply("❌ Pack not found")
-
-  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
-
-  let media =
-    msg.message?.imageMessage ||
-    msg.message?.videoMessage ||
-    quoted?.imageMessage ||
-    quoted?.videoMessage
-
-  if (!media)
-    return reply("❌ Reply to image/video")
-
-  const type = media.imageMessage ? "image" : "video"
-
-  const stream = await downloadContentFromMessage(media, type)
-
-  let buffer = Buffer.from([])
-  for await (const chunk of stream)
-    buffer = Buffer.concat([buffer, chunk])
-
-  pack.stickers.push({
-    type,
-    emoji,
-    data: buffer.toString("base64")
-  })
-
-  saveStickerPacks()
-
-  reply(`➕ Sticker added to *${name}* ${emoji}`)
+    reply(`➕ Added to *${name}* pack ${emoji}\n📦 Total stickers: ${pack.stickers.length}`)
+  } catch (err) {
+    console.error("PACK ADD ERROR:", err)
+    reply("❌ Failed to add sticker")
+  }
 },
 
 // VIEW PACKS
