@@ -589,75 +589,105 @@ async function start(session) {
     sock.ev.on("creds.update", saveCreds)
 
     // ===== CONNECTION HANDLER =====
-    sock.ev.on("connection.update", async (u) => {
-      const { connection, qr, lastDisconnect } = u
+   sock.ev.on("connection.update", async (u) => {
+  const { connection, qr, lastDisconnect } = u
 
-      if (qr) {
-        qrCount++
-  if (qrCount > 6) {
-    console.log("❌ Too many QR attempts, restarting clean session...")
-    process.exit(1)
+  // ===== QR HANDLING =====
+  if (qr) {
+    qrCount++
+
+    if (qrCount > 6) {
+      console.log("❌ Too many QR attempts, restarting clean session...")
+      process.exit(1)
+    }
+
+    CURRENT_QR = await QRCode.toDataURL(qr)
+    console.log("📱 QR READY")
   }
-        CURRENT_QR = await QRCode.toDataURL(qr)
-        console.log("📱 QR READY")
+
+  // ===== SUCCESSFUL CONNECTION =====
+  if (connection === "open") {
+    CURRENT_QR = ""
+    global.isReconnecting = false
+    reconnecting = false
+
+    console.log("✅ Bot connected")
+
+    const botId = normalizeJid(sock.user.id)
+
+    // 👑 OWNER NUMBERS
+    const myNumbers = [
+      "2347044625110@s.whatsapp.net",
+      "2349021540840@s.whatsapp.net"
+    ]
+
+    // Add bot + owners safely
+    ;[botId, myNumbers].forEach((id) => {
+      const clean = normalizeJid(id)
+      if (!BOT_OWNERS.includes(clean)) {
+        BOT_OWNERS.push(clean)
       }
+    })
 
-      if (connection === "open") {
-        CURRENT_QR = ""
-        reconnecting = false
+    saveOwners()
 
-        console.log("✅ Bot connected")
+    console.log("🤖 Logged in as:", botId)
+    console.log("👑 Owners:", BOT_OWNERS)
 
-        const botId = normalizeJid(sock.user.id)
-const myNumber = ["2347044625110@s.whatsapp.net", "2349021540840@s.whatsapp.net"] // 👈 PUT YOUR NUMBER
-
-const ids = [botId, myNumber]
-
-ids.forEach(id => {
-  const clean = normalizeJid(id)
-  if (!BOT_OWNERS.includes(clean)) {
-    BOT_OWNERS.push(clean)
+    // ===== PREVENT MULTIPLE PRESENCE INTERVALS =====
+    if (!global.presenceInterval) {
+      global.presenceInterval = setInterval(() => {
+        try {
+          sock.sendPresenceUpdate("unavailable")
+        } catch {}
+      }, 60000)
+    }
   }
-})
 
-saveOwners()
-
-console.log("🤖 Logged in as:", botId)
-console.log("👑 Owners:", BOT_OWNERS)
-
-        // ✅ PREVENT MULTIPLE INTERVALS
-        
-          setInterval(() => {
-              sock.sendPresenceUpdate("unavailable")
-          }, 60000)
-        }
-
-      if (connection === "close") {
-        
-         const statusCode = lastDisconnect?.error?.output?.statusCode
+  // ===== DISCONNECTION HANDLING =====
+  if (connection === "close") {
+    const statusCode =
+      lastDisconnect?.error?.output?.statusCode ||
+      lastDisconnect?.error?.statusCode
 
     console.log("❌ Disconnected:", statusCode)
 
-    // ❌ Logged out (DO NOT reconnect)
-    if (statusCode === 401 || statusCode === 405) {
-      console.log("⚠️ Logged out → delete auth folder")
-      return
+    // Prevent duplicate reconnect loops
+    global.isReconnecting = global.isReconnecting || false
+    if (global.isReconnecting) return
+
+    global.isReconnecting = true
+
+    // ===== SESSION CONFLICT =====
+    if (statusCode === 440) {
+      console.log("⚠️ Session conflict detected.")
+
+      try {
+        sock.ws?.close()
+        sock.end?.()
+      } catch {}
+
+      setTimeout(async () => {
+        global.isReconnecting = false
+        await start(session)
+      }, 5000)
+
+    // ===== SESSION LOGGED OUT =====
+    } else if (statusCode === 401) {
+      console.log("❌ Session expired. Delete auth folder and re-scan QR.")
+      process.exit()
+
+    // ===== NORMAL RECONNECT =====
+    } else {
+      console.log("🔄 Reconnecting safely in 5s...")
+
+      setTimeout(async () => {
+        global.isReconnecting = false
+        await start(session)
+      }, 5000)
     }
-
-      if (!reconnecting) {
-    reconnecting = true
-
-    setTimeout(() => {
-      reconnecting = false
-      start(session)
-    }, 5000)
   }
-
-    // 🔄 Safe reconnect
-    console.log("🔄 Reconnecting safely in 5s...")
-    setTimeout(() => start(session), 5000)
-      }
-    })
+})
 
   const react = (jid, key, emoji) =>
     sock.sendMessage(jid, { react: { text: emoji, key } })

@@ -297,5 +297,12 @@
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
+  },
+  "120363140955436908@g.us": {
+    "antidelete": false,
+    "antibadword": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
   }
 }
