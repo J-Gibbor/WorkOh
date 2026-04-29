@@ -2406,13 +2406,15 @@ updatebot: async () => {
 menu: async () => {
   
   // ===== BOT VERSION =====
-  const BOT_VERSION = getVersionData ? getVersionData() : {
-    version: "1.0.0",
-    latest: "1.0.0"
+  function safeVersion(v = {}) {
+  return {
+    version: v.version || "1.0.0",
+    latest: v.latest || v.version || "1.0.0"
   }
+}
 
-    const isOutdated =
-    BOT_VERSION.version !== BOT_VERSION.latest
+const BOT_VERSION = safeVersion(getVersionData?.())
+const isOutdated = BOT_VERSION.version !== BOT_VERSION.latest
 
 
   const header = getHeader()
