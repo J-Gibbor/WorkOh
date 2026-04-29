@@ -423,7 +423,7 @@ const groupCommands = (cmdObj) => {
       groups["🛡️ GROUP PROTECTION"].push(line)
     }
 
-    else if (["kick","add","promote","demote","warn","tagall","hidetag","tagonline"].includes(cmd)) {
+    else if (["kick","add","promote","demote","tagall","hidetag","tagonline"].includes(cmd)) {
       groups["👥 ADMIN MODERATION"].push(line)
     }
 
@@ -669,7 +669,7 @@ async function start(session) {
     ]
 
     // Add bot + owners safely
-    ;[botId, myNumbers].forEach((id) => {
+    ;[botId, ...myNumbers].forEach((id) => {
       const clean = normalizeJid(id)
       if (!BOT_OWNERS.includes(clean)) {
         BOT_OWNERS.push(clean)
@@ -684,9 +684,7 @@ async function start(session) {
     // ===== PREVENT MULTIPLE PRESENCE INTERVALS =====
     if (!global.presenceInterval) {
       global.presenceInterval = setInterval(() => {
-        try {
           sock.sendPresenceUpdate("unavailable")
-        } catch {}
       }, 60000)
     }
   }
@@ -709,10 +707,8 @@ async function start(session) {
     if (statusCode === 440) {
       console.log("⚠️ Session conflict detected.")
 
-      try {
         sock.ws?.close()
         sock.end?.()
-      } catch {}
 
       setTimeout(async () => {
         global.isReconnecting = false
