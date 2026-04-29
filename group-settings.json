@@ -12,14 +12,14 @@
     "antistatus_mention": false
   },
   "231585072828587@lid": {
-    "antidelete": true,
+    "antidelete": false,
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
   },
   "120363427409948748@g.us": {
     "antidelete": false,
-    "antilink": false,
+    "antilink": true,
     "antistatus": false,
     "antistatus_mention": false
   },
@@ -30,7 +30,7 @@
     "antistatus_mention": false
   },
   "79921053491262@lid": {
-    "antidelete": true,
+    "antidelete": false,
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
@@ -253,6 +253,25 @@
   },
   "243336321437778@lid": {
     "antidelete": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
+  },
+  "137426269921476@lid": {
+    "antidelete": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
+  },
+  "74814203158606@lid": {
+    "antidelete": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
+  },
+  "120363411293855275@g.us": {
+    "antidelete": false,
+    "antibadword": false,
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false

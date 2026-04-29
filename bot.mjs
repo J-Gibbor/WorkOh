@@ -16,6 +16,7 @@ import os from "os"
 import moment from "moment-timezone"
 import ffmpegPath from "ffmpeg-static"
 import { exec } from "child_process"
+import https from "https"
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -67,32 +68,129 @@ let reconnecting = false
 
 // ================= CONFIG =================
 const PREFIX = "."
-const WARN_LIMIT = 3
 const BOT_STATS = {
   startTime: Date.now(),
   messages: 0,
   commands: 0
 }
 
+let warns = {} // already exists in your code, keep it global
+const WARN_LIMIT = 3
 
-const BOT_VERSION = {
-  version: "2.0.0",
-  releaseDate: "2026-04-28",
-  owner: "GIBBORLEE",
-  changelog: [
-    "🧠 Smart menu system upgraded",
-    "🔐 Advanced mode control added",
-    "🌐 Live cyber banner system",
-    "⚡ Performance optimizations",
-    "🛡️ Stability improvements"
-  ]
+// ===== OPTIONAL LOCAL BACKUP =====
+const BACKUP_DIR = "./backups"
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR)
+
+// ===== VERSION FILE =====
+const VERSION_FILE = "./version.json"
+
+const getVersionData = () => {
+  if (!fs.existsSync(VERSION_FILE)) {
+    fs.writeFileSync(
+      VERSION_FILE,
+      JSON.stringify({
+        version: process.env.BOT_VERSION || "1.0.0",
+        lastUpdate: new Date().toISOString(),
+        rollbackAvailable: false
+      }, null, 2)
+    )
+  }
+
+  return JSON.parse(fs.readFileSync(VERSION_FILE))
 }
 
-// 🔥 LATEST VERSION (change this when you update bot)
-const LATEST_VERSION = "2.1.0"
+const saveVersionData = (data) => {
+  fs.writeFileSync(VERSION_FILE, JSON.stringify(data, null, 2))
+}
 
-// 🧠 VERSION CHECKER
-const isOutdated = () => BOT_VERSION.version !== LATEST_VERSION
+// const BOT_VERSION = {
+//   version: "2.0.0",
+//   releaseDate: "2026-04-28",
+//   owner: "GIBBORLEE",
+//   changelog: [
+//     "🧠 Smart menu system upgraded",
+//     "🔐 Advanced mode control added",
+//     "🌐 Live cyber banner system",
+//     "⚡ Performance optimizations",
+//     "🛡️ Stability improvements"
+//   ]
+// }
+
+// ===== SAFE DEPLOY HOOK =====
+const triggerRenderDeploy = async () => {
+  return new Promise((resolve, reject) => {
+    const hook = process.env.RENDER_DEPLOY_HOOK
+
+    if (!hook) {
+      return reject(new Error("Missing RENDER_DEPLOY_HOOK"))
+    }
+
+    const req = https.request(hook, { method: "POST" }, (res) => {
+      let data = ""
+
+      res.on("data", chunk => data += chunk)
+
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data)
+        } else {
+          reject(new Error(`Deploy failed: ${res.statusCode}`))
+        }
+      })
+    })
+
+    req.on("error", reject)
+    req.end()
+  })
+}
+
+
+// ===== LOCAL BACKUP =====
+const createBackup = () => {
+  const timestamp = Date.now()
+  const backupPath = `${BACKUP_DIR}/backup-${timestamp}.json`
+
+  const snapshot = {
+    owners: BOT_OWNERS,
+    settings: SETTINGS,
+    groupSettings: GROUP_SETTINGS,
+    timestamp
+  }
+
+  fs.writeFileSync(backupPath, JSON.stringify(snapshot, null, 2))
+
+  return backupPath
+}
+
+// ===== RESTORE LAST BACKUP =====
+const restoreLatestBackup = () => {
+  const files = fs.readdirSync(BACKUP_DIR)
+    .filter(f => f.endsWith(".json"))
+    .sort()
+
+  if (!files.length) return null
+
+  const latest = files[files.length - 1]
+  const data = JSON.parse(
+    fs.readFileSync(`${BACKUP_DIR}/${latest}`)
+  )
+
+  BOT_OWNERS = data.owners || BOT_OWNERS
+  SETTINGS = data.settings || SETTINGS
+  GROUP_SETTINGS = data.groupSettings || GROUP_SETTINGS
+
+  saveOwners()
+  saveSettings()
+  saveGroupSettings()
+
+  return latest
+}
+
+// // 🔥 LATEST VERSION (change this when you update bot)
+// const LATEST_VERSION = "2.1.0"
+
+// // 🧠 VERSION CHECKER
+// const isOutdated = () => BOT_VERSION.version !== LATEST_VERSION
 
 
 // ==== STICKER META ====
@@ -118,59 +216,180 @@ const createSticker = async (buffer) => {
   }
 }
 
+// =======WARN DATABASE ===============
+const WARN_DB = global.WARN_DB || (global.WARN_DB = {})
+
+const saveWarnDB = () => {
+  fs.writeFileSync("./warn_db.json", JSON.stringify(WARN_DB, null, 2))
+}
+
+const loadWarnDB = () => {
+  try {
+    if (fs.existsSync("./warn_db.json")) {
+      Object.assign(WARN_DB, JSON.parse(fs.readFileSync("./warn_db.json")))
+    }
+  } catch (e) {
+    console.log("Warn DB load error:", e)
+  }
+}
+
+loadWarnDB()
+
+// ================= AUTO CLEANER  =================
+setInterval(() => {
+  for (const group in WARN_DB) {
+    for (const user in WARN_DB[group]) {
+      if (!WARN_DB[group][user] || WARN_DB[group][user].length === 0) {
+        delete WARN_DB[group][user]
+      }
+    }
+
+    // remove empty groups
+    if (Object.keys(WARN_DB[group]).length === 0) {
+      delete WARN_DB[group]
+    }
+  }
+
+  saveWarnDB()
+}, 24 * 60 * 60 * 1000)
+
+
+  // =====MENU COMMANDS ====
 
 const COMMANDS = {
-  antidelete: "🧠 Restore deleted messages automatically",
-  antilink: "🔗 Delete messages containing links",
-  antistatus: "🚫 Block status viewing detection",
+  // 🛡️ PROTECTION
+  antilink: "🚫 Block WhatsApp & external links",
+  antibadword: "🧼 Auto-remove offensive words",
+  antidelete: "🧠 Recover deleted messages",
+  antistatus: "👁️ Block status viewing detection",
   antistatusmention: "📢 Block status mentions",
 
-  settings: "⚙️ Show current bot settings",
-
-  lock: "🔒 Restrict group to admins only",
-  unlock: "🔓 Allow all members to chat",
-
+  // 👥 ADMIN
   kick: "👢 Remove a user from group",
-  add: "➕ Add a user to group",
+  add: "➕ Add user to group",
   promote: "⬆️ Promote user to admin",
-  demote: "⬇️ Remove admin rights",
-  warn: "⚠️ Warn user (3 warns = kick)",
-
-  delete: "🗑️ Delete a replied message",
-  del: "🧨 Force delete message",
-
-  setname: "✏️ Change group name",
-  setdesc: "📝 Change group description",
-  groupinfo: "📊 Show group details",
-  admins: "👮 Show group admins",
-  grouplink: "🔗 Get group invite link",
-  revoke: "♻️ Reset group invite link",
-
-  invite: "🔗 Sends group link",
-  approve: "✅ Accept join request",
-  reject: "❌ Decline join request",
-
-
+  demote: "⬇️ Remove admin privileges",
   tagall: "📣 Mention all members",
-  hidetag: "📌 Send hidden mention message",
-  tagonline: "🟢 Tag only active users",
+  hidetag: "👻 Hidden group mention",
+  tagonline: "🟢 Tag active members",
 
+  // ⚙️ GROUP
+  setname: "✏️ Change group name",
+  setdesc: "📝 Update group description",
+  groupinfo: "📊 View group analytics",
+  grouplink: "🔗 Get invite link",
+  revoke: "♻️ Reset invite link",
+  lock: "🔒 Lock group (admins only)",
+  unlock: "🔓 Unlock group chat",
+
+  // 🎨 MEDIA
   vv: "👁️ Recover view-once media",
-  pp: "🖼️ Get profile picture HD",
-  sticker: "🖼️ Convert image to sticker",
-  stickergif: "🎥 Convert video to animated sticker",
-  memeSticker: "😂 Text → meme sticker",
-  captionSticker: "🖌️ Caption → sticker",
-  stickerpack: "🔥 Create sticker pack",
+  pp: "🖼️ HD profile picture fetch",
+  sticker: "🎭 Convert image to sticker",
+  stickergif: "🎬 Video → animated sticker",
+  memesticker: "😂 Text → meme sticker",
+  captionsticker: "✍️ Caption → sticker",
+  stickerpack: "📦 Create custom sticker pack",
 
+  // 👑 OWNER
   addowner: "👑 Add bot owner",
-  delowner: "👑 Remove bot owner",
-  owners: "👑 Show all bot owners",
+  delowner: "🗑️ Remove bot owner",
+  owners: "📋 View all owners",
+  restart: "🔄 Restart bot system",
+  shutdown: "⛔ Shutdown bot safely",
+  broadcast: "📢 Send message to all chats",
+  ban: "🚷 Block user access",
+  unban: "✅ Unblock user access",
 
-  whoami: "🆔 Show your WhatsApp JID",
-  stats: "📊 View bot uptime, message count, and command usage",
-  mode: "when set to private: 🔒 Owner only mode, when public: 🔘 Everyone can use bot ",
+    // ⚠️ WARNING SYSTEM
+  warn: "⚠️ Warn a user (auto kick at 3 warns)",
+  warnlist: "📋 View all warnings in group",
+  warninfo: "👤 Check a user warning history",
+  unwarn: "🧹 Clear user warnings",
+
+  // 🔐 MODE
+ mode: "⚙️ Switch bot operating mode (public/private/group/dm/auto)",
+
+  // ℹ️ INFO
+  alive: "💚 Check bot status",
+  whoami: "🆔 Show your WhatsApp ID",
+  version: "📦 View bot version",
+  stats: "📊 Bot usage statistics",
+  ping: "🏓 Check bot response speed (latency test)",
+
+  // 🛠️ UPDATE
+  updatebot: "🚀 Deploy latest version",
+  backupbot: "💾 Create system backup",
+  rollbackbot: "♻️ Restore previous backup",
+
+  // 📦 STICKER PACK SYSTEM
+packcreate: "📦 Create a new sticker pack",
+packadd: "➕ Add sticker to pack",
+packview: "📖 View your sticker pack",
+packdelete: "🗑️ Delete a sticker pack",
+packexport: "📤 Export pack as file"
 }
+
+const groupCommands = (cmdObj) => {
+  const groups = {
+    "🛡️ GROUP PROTECTION": [],
+    "👥 ADMIN MODERATION": [],
+    "⚙️ GROUP MANAGEMENT": [],
+    "⚠️ WARNING SYSTEM": [],
+    "🎨 MEDIA": [],
+    "👑 OWNER CONTROL": [],
+    "🔐 MODE CONTROL": [],
+    "ℹ️ INFO": [],
+    "🛠️ BOT UPDATE": []
+  }
+
+  for (const [cmd, desc] of Object.entries(cmdObj)) {
+    const line = `│ .${cmd} → ${desc}`
+
+    if (["antilink","antibadword","antidelete","antistatus","antistatusmention"].includes(cmd)) {
+      groups["🛡️ GROUP PROTECTION"].push(line)
+    }
+
+    else if (["kick","add","promote","demote","warn","tagall","hidetag","tagonline"].includes(cmd)) {
+      groups["👥 ADMIN MODERATION"].push(line)
+    }
+
+    else if (["setname","setdesc","groupinfo","grouplink","revoke","lock","unlock"].includes(cmd)) {
+      groups["⚙️ GROUP MANAGEMENT"].push(line)
+    }
+
+    else if (["warn","warnlist","warninfo","unwarn"].includes(cmd)) {
+  groups["⚠️ WARNING SYSTEM"].push(line)
+}
+
+    else if (["vv","pp","sticker","stickergif","memesticker","captionsticker","stickerpack"].includes(cmd)) {
+      groups["🎨 MEDIA"].push(line)
+    }
+
+    else if (["addowner","delowner","owners","restart","shutdown","broadcast","ban","unban"].includes(cmd)) {
+      groups["👑 OWNER CONTROL"].push(line)
+    }
+
+    else if (["mode"].includes(cmd)) {
+      groups["🔐 MODE CONTROL"].push(line)
+    }
+
+    else if (["alive","whoami","version", "ping" ,"stats"].includes(cmd)) {
+      groups["ℹ️ INFO"].push(line)
+    }
+
+    else if (["updatebot","backupbot","rollbackbot"].includes(cmd)) {
+      groups["🛠️ BOT UPDATE"].push(line)
+    }
+
+    else if (["packcreate","packadd","packview","packdelete","packexport"].includes(cmd)) {
+  add("📦 STICKER PACK SYSTEM", cmd, desc)
+}
+  }
+
+  return groups
+}
+
 
 const menuHeaders = [
   "╭─❖ 🤖 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 𝐁𝐎𝐓 𝐌𝐄𝐍𝐔 ❖─╮",
@@ -270,6 +489,13 @@ const saveGroupSettings = () => fs.writeFileSync(GROUP_SETTINGS_FILE, JSON.strin
 
 const saveSettings = () => fs.writeFileSync(SETTINGS_FILE, JSON.stringify(SETTINGS, null, 2))
 
+let STICKER_PACKS = fs.existsSync("./stickerpacks.json")
+  ? JSON.parse(fs.readFileSync("./stickerpacks.json"))
+  : {}
+
+const saveStickerPacks = () =>
+  fs.writeFileSync("./stickerpacks.json", JSON.stringify(STICKER_PACKS, null, 2))
+
 // 🔥 FORCE GLOBAL DEFAULT MODE
 if (!SETTINGS["global"]) {
   SETTINGS["global"] = { mode: "public" }
@@ -288,7 +514,8 @@ const saveOwners = () => fs.writeFileSync(OWNERS_FILE, JSON.stringify(BOT_OWNERS
 const getGroup_Settings = (jid) => {
   if (!GROUP_SETTINGS[jid]) {
     GROUP_SETTINGS[jid] = { 
-      antidelete: false, 
+      antidelete: false,
+      antibadword: false, 
       antilink: false,
       antistatus: false,
       antistatus_mention: false
@@ -374,10 +601,8 @@ console.log("👑 Owners:", BOT_OWNERS)
         // ✅ PREVENT MULTIPLE INTERVALS
         
           setInterval(() => {
-            try {
               sock.sendPresenceUpdate("unavailable")
-            } catch {}
-          }, 15000)
+          }, 30000)
         }
 
       if (connection === "close") {
@@ -479,36 +704,71 @@ const reply = async (text) => {
     const getTarget = () =>
       msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
 
+    const addWarn = async (jid, user, reason) => {
+  warns[user] = (warns[user] || 0) + 1
+
+  const count = warns[user]
+
+  if (count >= WARN_LIMIT) {
+    try {
+      await sock.groupParticipantsUpdate(jid, [user], "remove")
+      delete warns[user]
+
+      await sock.sendMessage(jid, {
+        text: `🚫 @${user.split("@")[0]} removed (${reason})`,
+        mentions: [user]
+      })
+    } catch {}
+  } else {
+    await sock.sendMessage(jid, {
+      text: `⚠️ @${user.split("@")[0]} warning ${count}/${WARN_LIMIT}\nReason: ${reason}`,
+      mentions: [user]
+    })
+  }
+}
+
     // ================= ANTI STATUS =================
-if (group_settings.antistatus || group_settings.antistatus_mention) {
+if (group_settings.antistatus && msg.key.remoteJid === "status@broadcast") {
   try {
-    const msgType = msg.message
+    await sock.readMessages([msg.key])
 
-    const isStatus =
-      msg.key.remoteJid === "status@broadcast"
+    await addWarn(jid, sender, "Status viewing blocked")
 
-    if (isStatus) {
-      // delete status view
-      if (group_settings.antistatus) {
-        await sock.readMessages([msg.key])
-      }
+  } catch {}
+}
 
-      // handle mentions inside status
-      if (group_settings.antistatus_mention) {
-        const text =
-          msg.message?.extendedTextMessage?.text ||
-          msg.message?.conversation ||
-          ""
+//  =========ANTI STATUS_MENTION=======
 
-        if (text.includes("@")) {
-          await sock.sendMessage(jid, {
-            text: "🚫 Status mention blocked",
-          })
-        }
-      }
+if (group_settings.antistatus_mention) {
+  const text =
+    msg.message?.extendedTextMessage?.text ||
+    msg.message?.conversation ||
+    ""
+
+  if (text.includes("@")) {
+    await sock.sendMessage(jid, { delete: msg.key })
+
+    await addWarn(jid, sender, "Status mention detected")
+
+    await sock.sendMessage(jid, {
+      text: "🚫 Status mention blocked"
+    })
+  }
+}
+
+// ================= ANTI BAD WORD =================
+if (isGroup && group_settings.antibadword && body) {
+  const badwords = ["fuck", "shit", "bitch", "asshole"]
+
+  if (badwords.some(w => body.toLowerCase().includes(w))) {
+    if (!isAdmin && !isOwner) {
+      await sock.sendMessage(jid, { delete: msg.key })
+
+      await addWarn(jid, sender, "Bad word detected")
+      await react(jid, msg.key, "🧼")
+
+      return
     }
-  } catch (e) {
-    console.log("Anti-status error:", e)
   }
 }
 
@@ -556,23 +816,17 @@ if (group_settings.antistatus || group_settings.antistatus_mention) {
     }
 
     // ================= ANTI LINK =================
-   if (isGroup && group_settings.antilink && body) {
+  if (isGroup && group_settings.antilink && body) {
   const links = ["http", "wa.me", ".com", ".net", "chat.whatsapp.com"]
 
   if (links.some(l => body.toLowerCase().includes(l))) {
     if (!isAdmin && !isOwner) {
       await sock.sendMessage(jid, { delete: msg.key })
-      warns[sender] = (warns[sender] || 0) + 1
 
-      await react(jid, msg.key, "⚠️")
+      await addWarn(jid, sender, "Link detected")
+      await react(jid, msg.key, "🚫")
 
-      if (warns[sender] >= WARN_LIMIT) {
-        await sock.groupParticipantsUpdate(jid, [sender], "remove")
-        delete warns[sender]
-        return reply("🚫 Removed (link spam)")
-      }
-
-      return reply(`⚠️ Warning ${warns[sender]}/3`)
+      return
     }
   }
 }
@@ -620,16 +874,16 @@ if (isDM) {
 
       
       // ===== MEDIA =====
-       vv: async () => {
+      vv: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
-  if (!quoted) return reply("Reply to a view-once message")
+  if (!quoted) return reply("❌ Reply to a view-once message")
 
   const type = Object.keys(quoted)[0]
   const content = quoted[type]
 
-  if (!content) return reply("Invalid message")
+  if (!content) return reply("❌ Invalid message")
 
   try {
     const stream = await downloadContentFromMessage(
@@ -647,10 +901,31 @@ if (isDM) {
     else if (type === "videoMessage") sendType = "video"
     else if (type === "audioMessage") sendType = "audio"
 
-    await sock.sendMessage(sender, {
+    // 📤 send result
+    const sent = await sock.sendMessage(sender, {
       [sendType]: buffer,
       caption: "👁️ View-once recovered"
     })
+
+    // // 💣 delete result AFTER 15s
+    // setTimeout(async () => {
+    //   try {
+    //     await sock.sendMessage(sender, { delete: sent.key })
+    //   } catch (e) {
+    //     console.log("VV result delete failed:", e)
+    //   }
+    // }, 15000)
+
+    // 💣 DELETE COMMAND MESSAGE (immediately or slight delay)
+    setTimeout(async () => {
+      try {
+        await sock.sendMessage(sender, {
+          delete: msg.key
+        })
+      } catch (e) {
+        console.log("VV command delete failed:", e)
+      }
+    }, 4000)
 
   } catch (e) {
     console.log(e)
@@ -659,22 +934,42 @@ if (isDM) {
 },
 
       pp: async () => {
-        if (!isOwner) return reply("❌ Owner only")
+  if (!isOwner) return reply("❌ Owner only")
 
-        let target = getTarget() || sender
+  let target = getTarget() || sender
 
-        try {
-          const url = await sock.profilePictureUrl(target, "image")
+  try {
+    const url = await sock.profilePictureUrl(target, "image")
 
-          await sock.sendMessage(sender, {
-            image: { url },
-            caption: "🖼️ Profile picture HD"
-          })
+    const sent = await sock.sendMessage(sender, {
+      image: { url },
+      caption: "🖼️ Profile picture HD"
+    })
 
-        } catch {
-          reply("❌ Cannot fetch profile picture")
-        }
-      },
+    // // 💣 delete result after 15s
+    // setTimeout(async () => {
+    //   try {
+    //     await sock.sendMessage(sender, { delete: sent.key })
+    //   } catch (e) {
+    //     console.log("PP result delete failed:", e)
+    //   }
+    // }, 15000)
+
+    // 💣 delete command message
+    setTimeout(async () => {
+      try {
+        await sock.sendMessage(sender, {
+          delete: msg.key
+        })
+      } catch (e) {
+        console.log("PP command delete failed:", e)
+      }
+    }, 2000)
+
+  } catch {
+    reply("❌ Cannot fetch profile picture")
+  }
+},
 
       sticker: async () => {
         if (!isOwner) return reply("❌ Owner only")
@@ -702,21 +997,51 @@ if (isDM) {
 
 stickergif: async () => {
   if (!isOwner) return reply("❌ Owner only")
-  const quoted =
-    msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
-  let mediaMessage =
-    msg.message?.videoMessage ||
-    quoted?.videoMessage
+const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
-  if (!mediaMessage) return reply("❌ Reply to a video")
+const media =
+  msg.message?.imageMessage ||
+  msg.message?.videoMessage ||
+  quoted?.imageMessage ||
+  quoted?.videoMessage
 
-  const input = "./temp.mp4"
+  if (!media) return reply("❌ Reply to image, video or GIF")
+
+  const input = "./temp_input"
   const output = "./temp.webp"
 
   try {
-    // 1. download video
-    const stream = await downloadContentFromMessage(mediaMessage, "video")
+    // detect type
+const type =
+  msg.message?.imageMessage ? "image" :
+  msg.message?.videoMessage ? "video" :
+  quoted?.imageMessage ? "image" :
+  quoted?.videoMessage ? "video" :
+  null
+
+if (!type) return reply("❌ Unsupported media")
+
+const mediaObj =
+  msg.message?.imageMessage ||
+  msg.message?.videoMessage ||
+  quoted?.imageMessage ||
+  quoted?.videoMessage
+
+const stream = await downloadContentFromMessage(mediaObj, type)
+
+try {
+  const stream = await downloadContentFromMessage(mediaObj, type)
+
+  let buffer = Buffer.from([])
+  for await (const chunk of stream) {
+    buffer = Buffer.concat([buffer, chunk])
+  }
+
+} catch (e) {
+  console.log("DOWNLOAD ERROR:", e)
+  return reply("❌ Media download failed (encrypted or expired message)")
+}
 
     let buffer = Buffer.from([])
     for await (const chunk of stream) {
@@ -725,16 +1050,26 @@ stickergif: async () => {
 
     fs.writeFileSync(input, buffer)
 
-    // 2. convert with ffmpeg
+    // IMAGE → STICKER (fast path)
+    if (type === "image") {
+      const sticker = await createSticker(buffer)
+
+      return sock.sendMessage(jid, {
+        sticker
+      }, { quoted: msg })
+    }
+
+    // VIDEO / GIF → STICKER (ffmpeg)
     exec(
-      `${ffmpegPath} -i ${input} -vf "scale=512:512:force_original_aspect_ratio=decrease" -t 6 -r 15 ${output}`,
+      `${ffmpegPath} -y -i ${input} ` +
+      `-vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15" ` +
+      `-t 6 -r 15 ${output}`,
       async (err) => {
         if (err) {
           console.log(err)
-          return reply("❌ FFmpeg failed")
+          return reply("❌ Conversion failed")
         }
 
-        // 3. send sticker
         const stickerBuffer = fs.readFileSync(output)
 
         await sock.sendMessage(jid, {
@@ -742,14 +1077,19 @@ stickergif: async () => {
         }, { quoted: msg })
 
         // cleanup
-        fs.unlinkSync(input)
-        fs.unlinkSync(output)
+      // cleanup (SAFE VERSION)
+try {
+  if (fs.existsSync(input)) fs.unlinkSync(input)
+  if (fs.existsSync(output)) fs.unlinkSync(output)
+} catch (e) {
+  console.log("Cleanup error:", e)
+}
       }
     )
 
   } catch (e) {
-    console.log(e)
-    reply("❌ Failed to create sticker")
+    console.log("STICKER ERROR:", e)
+    reply("❌ Failed to convert to sticker")
   }
 },
 
@@ -822,7 +1162,8 @@ const sticker = await createSticker(buffer)
 
 stickerpack: async () => {
   if (!isOwner) return reply("❌ Owner only")
-  const name = args.join(" ") || "Special Pack"
+  const name = args.join(" ") || "🎭 Special Pack"
+const author = msg.pushName || "Bot User"
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
 
@@ -839,12 +1180,198 @@ stickerpack: async () => {
 
   const sticker = await createSticker(buffer)
 
+await sock.sendMessage(jid, {
+  sticker,
+  packname: name,
+  author
+}, { quoted: msg })
+},
+
+// =========== PACKS ===========
+
+//  CREATE PACK
+
+pack_create: async () => {
+  const name = args[0]?.toLowerCase()
+
+  if (!name)
+    return reply("❌ Usage: .pack create <name>")
+
+  if (STICKER_PACKS[name])
+    return reply("❌ Pack already exists")
+
+  STICKER_PACKS[name] = {
+    owner: sender,
+    created: Date.now(),
+    stickers: []
+  }
+
+  saveStickerPacks()
+
+  reply(`📦 Pack *${name}* created successfully`)
+},
+
+// ADD PACK
+
+pack_add: async () => {
+ pack_add: async () => {
+  const name = args[0]?.toLowerCase()
+  const emoji = args[1] || "🙂"
+
+  if (!name)
+    return reply("❌ Usage: .pack add <name> [emoji]")
+
+  const pack = STICKER_PACKS[name]
+  if (!pack)
+    return reply("❌ Pack not found")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+
+  let media =
+    msg.message?.imageMessage ||
+    msg.message?.videoMessage ||
+    quoted?.imageMessage ||
+    quoted?.videoMessage
+
+  if (!media)
+    return reply("❌ Reply to image/video")
+
+  const type = media.imageMessage ? "image" : "video"
+
+  const stream = await downloadContentFromMessage(media, type)
+
+  let buffer = Buffer.from([])
+  for await (const chunk of stream)
+    buffer = Buffer.concat([buffer, chunk])
+
+  pack.stickers.push({
+    type,
+    emoji,
+    data: buffer.toString("base64")
+  })
+
+  saveStickerPacks()
+
+  reply(`➕ Sticker added to *${name}* ${emoji}`)
+}
+
+  if (!name)
+    return reply("❌ Usage: .pack add <name> [emoji]")
+
+  const pack = STICKER_PACKS[name]
+  if (!pack)
+    return reply("❌ Pack not found")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+
+  let media =
+    msg.message?.imageMessage ||
+    msg.message?.videoMessage ||
+    quoted?.imageMessage ||
+    quoted?.videoMessage
+
+  if (!media)
+    return reply("❌ Reply to image/video")
+
+  const type = media.imageMessage ? "image" : "video"
+
+  const stream = await downloadContentFromMessage(media, type)
+
+  let buffer = Buffer.from([])
+  for await (const chunk of stream)
+    buffer = Buffer.concat([buffer, chunk])
+
+  pack.stickers.push({
+    type,
+    emoji,
+    data: buffer.toString("base64")
+  })
+
+  saveStickerPacks()
+
+  reply(`➕ Sticker added to *${name}* ${emoji}`)
+},
+
+// VIEW PACKS
+
+pack_view: async () => {
+  const name = args[0]?.toLowerCase()
+
+  if (!name)
+    return reply("❌ Usage: .pack view <name>")
+
+  const pack = STICKER_PACKS[name]
+
+  if (!pack)
+    return reply("❌ Pack not found")
+
+  let text = `📦 *PACK: ${name}*\n\n`
+
+  pack.stickers.forEach((s, i) => {
+    text += `${i + 1}. ${s.emoji} ${s.type}\n`
+  })
+
+  reply(text)
+},
+
+// LIST PACKS
+
+pack_list: async () => {
+  const packs = Object.keys(STICKER_PACKS)
+
+  if (!packs.length)
+    return reply("❌ No packs available")
+
+  let text = "📦 *STICKER PACKS*\n\n"
+
+  packs.forEach(p => {
+    text += `• ${p} (${STICKER_PACKS[p].stickers.length})\n`
+  })
+
+  reply(text)
+},
+
+// DELETE PACK
+
+pack_delete: async () => {
+  const name = args[0]?.toLowerCase()
+
+  if (!name)
+    return reply("❌ Usage: .pack delete <name>")
+
+  if (!STICKER_PACKS[name])
+    return reply("❌ Pack not found")
+
+  delete STICKER_PACKS[name]
+  saveStickerPacks()
+
+  reply(`🗑️ Pack *${name}* deleted`)
+},
+
+// SEND PACK
+
+pack_send: async () => {
+  const name = args[0]?.toLowerCase()
+
+  if (!name)
+    return reply("❌ Usage: .pack send <name>")
+
+  const pack = STICKER_PACKS[name]
+
+  if (!pack || !pack.stickers.length)
+    return reply("❌ Empty or missing pack")
+
+  const random =
+    pack.stickers[Math.floor(Math.random() * pack.stickers.length)]
+
+  const buffer = Buffer.from(random.data, "base64")
+
   await sock.sendMessage(jid, {
-    sticker,
-    packname: name,
-    author: "GIBBORLEE PACK CREATOR"
+    sticker: buffer,
+    caption: random.emoji
   }, { quoted: msg })
 },
+
       // ===== TOGGLES =====
       antidelete: async () => {
         if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
@@ -859,6 +1386,16 @@ stickerpack: async () => {
         saveGroupSettings()
         reply(`🔗 Anti-link ${group_settings.antilink ? "ON" : "OFF"}`)
       },
+
+      antibadword: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin only  or Bot owner only")
+
+  group_settings.antibadword = args[0] === "on"
+  saveGroupSettings()
+
+  reply(`🧼 Anti-badword ${group_settings.antibadword ? "ON" : "OFF"}`)
+},
 
       settings: async () => {
         reply(`⚙️ SETTINGS\n
@@ -895,20 +1432,110 @@ stickerpack: async () => {
       },
 
       warn: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-        const target = getTarget()
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-        warns[target] = (warns[target] || 0) + 1
+  const target = getTarget()
+  if (!target) return reply("❌ Mention user")
 
-        if (warns[target] >= WARN_LIMIT) {
-          await sock.groupParticipantsUpdate(jid, [target], "remove")
-          delete warns[target]
-          return reply("🚫 Removed (3 warns)")
-        }
+  const reason = args.slice(1).join(" ") || "No reason provided"
 
-        reply(`⚠️ Warn ${warns[target]}/3`)
-      },
+  if (!WARN_DB[jid]) WARN_DB[jid] = {}
+  if (!WARN_DB[jid][target]) WARN_DB[jid][target] = []
+
+  WARN_DB[jid][target].push({
+    reason,
+    by: sender,
+    time: Date.now()
+  })
+
+  saveWarnDB()
+
+  const count = WARN_DB[jid][target].length
+
+  await reply(
+`⚠️ *WARNING ISSUED*
+
+👤 User: @${target.split("@")[0]}
+⚠️ Warn: ${count}/3
+📝 Reason: ${reason}`
+  )
+
+  // AUTO KICK SYSTEM
+  if (count >= 3) {
+    await sock.groupParticipantsUpdate(jid, [target], "remove")
+
+    delete WARN_DB[jid][target]
+    saveWarnDB()
+
+    return reply("🚫 User removed after 3 warnings")
+  }
+},
+
+warnlist: async () => {
+  if (!isGroup) return reply("❌ Group only")
+if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const data = WARN_DB[jid]
+  if (!data || Object.keys(data).length === 0)
+    return reply("📭 No warnings in this group")
+
+  let text = "⚠️ *GROUP WARNINGS*\n\n"
+
+  for (const user in data) {
+    const warns = data[user]
+
+    text += `👤 @${user.split("@")[0]}\n`
+    text += `⚠️ Count: ${warns.length}\n`
+
+    warns.forEach((w, i) => {
+      text += `   ${i + 1}. ${w.reason}\n`
+    })
+
+    text += "\n"
+  }
+
+  await sock.sendMessage(jid, {
+    text,
+    mentions: Object.keys(data)
+  })
+},
+
+unwarn: async () => {
+  if (!isGroup) return reply("❌ Group only")
+if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const target = getTarget()
+  if (!target) return reply("❌ Mention user")
+
+  if (!WARN_DB[jid] || !WARN_DB[jid][target])
+    return reply("❌ No warnings found")
+
+  delete WARN_DB[jid][target]
+  saveWarnDB()
+
+  reply(`✅ Warnings cleared for @${target.split("@")[0]}`)
+},
+
+warninfo: async () => {
+  if (!isGroup) return reply("❌ Group only")
+if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const target = getTarget() || sender
+
+  const warns = WARN_DB[jid]?.[target] || []
+
+  if (!warns.length)
+    return reply("✅ No warnings for this user")
+
+  let text = `⚠️ *WARN INFO*\n\n👤 @${target.split("@")[0]}\n\n`
+
+  warns.forEach((w, i) => {
+    text += `⚠️ ${i + 1}. ${w.reason}\n`
+  })
+
+  reply(text)
+},
 
       viewadmins: async () => {
   if (!isGroup) return reply("❌ Group only")
@@ -981,18 +1608,66 @@ stickerpack: async () => {
         )
       },
 
-      restart: async () => {
+   restart: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
-  await reply("🔄 Restarting bot...")
-  process.exit(0)
+  await reply("🔄 Restarting bot safely...")
+
+  try {
+    // optional: log restart event or save state
+    console.log("🔄 Bot restart requested by owner")
+
+    // small delay to ensure message is sent
+    setTimeout(() => {
+      // clean exit so Render restarts container properly
+      process.exit(0)
+    }, 1500)
+
+  } catch (e) {
+    console.log("Restart error:", e)
+    reply("❌ Restart failed")
+  }
+},
+
+restart_force: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  await reply("🔄 Restarting bot safely...")
+
+  setTimeout(() => {
+    // intentional crash → Render auto-redeploys container
+    throw new Error("BOT_RESTART_TRIGGER")
+  }, 1500)
 },
 
 shutdown: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
-  await reply("⛔ Shutting down bot safely...")
-  process.exit(1)
+  try {
+    await reply("⛔ Shutting down bot safely...")
+
+    console.log("⛔ Shutdown triggered by owner")
+
+    // small delay to ensure message delivery
+    setTimeout(() => {
+      // clean exit signal for Render
+      process.exit(0)
+    }, 1500)
+
+  } catch (e) {
+    console.log("Shutdown error:", e)
+    process.exit(1)
+  }
+},
+
+shutdown_force: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  await reply("⛔ Bot shutting down...")
+
+  setTimeout(() => {
+    throw new Error("BOT_SHUTDOWN_TRIGGER")
+  }, 1500)
 },
 
 
@@ -1013,38 +1688,6 @@ update: async () => {
 
     reply(`✅ Update complete:\n${stdout || "No new updates"}`)
   })
-},
-
-backup: async () => {
-  if (!isOwner) return reply("❌ Owner only")
-
-  try {
-    const backupData = {
-      owners: BOT_OWNERS,
-      settings: SETTINGS,
-      groups: GROUP_SETTINGS,
-      stats: BOT_STATS,
-      timestamp: new Date().toISOString()
-    }
-
-    const backupFile = "./backup.json"
-
-    fs.writeFileSync(
-      backupFile,
-      JSON.stringify(backupData, null, 2)
-    )
-
-    await sock.sendMessage(jid, {
-      document: fs.readFileSync(backupFile),
-      mimetype: "application/json",
-      fileName: `backup-${Date.now()}.json`,
-      caption: "📂 Bot backup created"
-    }, { quoted: msg })
-
-  } catch (e) {
-    console.log(e)
-    reply("❌ Backup failed")
-  }
 },
 
 
@@ -1253,7 +1896,7 @@ tagonline: async () => {
     reply("❌ Failed to fetch active users")
   }
 },
-     hidetag: async () => {
+    hidetag: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
@@ -1270,10 +1913,22 @@ tagonline: async () => {
       ? args.join(" ")
       : "📢 Announcement"
 
+    // 📤 send hidetag message
     await sock.sendMessage(jid, {
       text,
       mentions: members
     })
+
+    // ⏱️ delete command after 3 seconds
+    setTimeout(async () => {
+      try {
+        await sock.sendMessage(jid, {
+          delete: msg.key
+        })
+      } catch (e) {
+        console.log("Command auto-delete failed:", e)
+      }
+    }, 3000)
 
   } catch (e) {
     console.log("Hidetag Error:", e)
@@ -1563,19 +2218,32 @@ mode: async () => {
   const current = settings.mode || "public"
   const newMode = args[0]?.toLowerCase()
 
-  // 📊 SHOW CURRENT MODE
   if (!newMode) {
     return reply(
-`🔐 BOT MODE PANEL
+`🔐 𝐁𝐎𝐓 𝐌𝐎𝐃𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋
 
-🌍 public  → Everyone can use bot
-🔒 private → Owner only
-👥 group   → Group chats only
-💬 dm      → Direct messages only
-⚡ auto    → Smart mode:
-   • Groups = Public
-   • DMs = Owner only
+🌍 *PUBLIC MODE*
+➤ Everyone can use the bot
+➤ Best for open groups & communities
 
+🔒 *PRIVATE MODE*
+➤ Only bot owner can use commands
+➤ Maximum security mode
+
+👥 *GROUP MODE*
+➤ Works only in group chats
+➤ Ignores all DMs
+
+💬 *DM MODE*
+➤ Works only in private chats
+➤ Ignores all groups
+
+⚡ *AUTO MODE*
+➤ Smart switching system:
+   • Groups → Public access
+   • DMs → Owner-only access
+
+━━━━━━━━━━━━━━━━━━━━
 📊 Current Mode: *${current.toUpperCase()}*
 
 Usage:
@@ -1587,11 +2255,10 @@ Usage:
     )
   }
 
-  // ✅ VALIDATE
-  const validModes = ["public", "private", "group", "dm", "auto"]
+  const valid = ["public", "private", "group", "dm", "auto"]
 
-  if (!validModes.includes(newMode)) {
-    return reply("❌ Invalid mode.\nUse: public / private / group / dm / auto")
+  if (!valid.includes(newMode)) {
+    return reply("❌ Invalid mode\nUse: public / private / group / dm / auto")
   }
 
   settings.mode = newMode
@@ -1604,80 +2271,130 @@ whoami: async () => {
   reply(`👤 Your JID:\n${sender}`)
 },
 
-version: async () => {
-   if (!isOwner) return reply("❌ Owner only")
-  const status = isOutdated()
-    ? "⚠️ OUTDATED - UPDATE AVAILABLE"
-    : "✅ LATEST VERSION"
+ping: async () => {
+  const start = Date.now()
 
-  const changelogText = BOT_VERSION.changelog
-    .map(v => `• ${v}`)
-    .join("\n")
+  const sent = await sock.sendMessage(jid, {
+    text: "🏓 Pinging..."
+  })
 
-  reply(`
-🤖 *BOT VERSION INFO*
+  const end = Date.now()
+  const speed = end - start
 
-📦 Version: ${BOT_VERSION.version}
-🆕 Latest: ${LATEST_VERSION}
-📅 Release: ${BOT_VERSION.releaseDate}
+  await sock.sendMessage(jid, {
+    text:
+`🏓 *PONG!. I AM ACTIVE TO ASSIST YOU*
 
-📊 Status: ${status}
-
-━━━━━━━━━━━━━━
-🧠 *CHANGELOG*
-${changelogText}
-
-━━━━━━━━━━━━━━
-👑 Owner: ${BOT_VERSION.owner}
-  `)
+⚡ Speed: ${speed}ms
+🤖 Status: Online
+📡 Server: Active`
+  }, { quoted: msg })
 },
 
+// 🔥 .version
+version: async () => {
+  if (!isOwner) return reply("❌ Owner only")
 
+  try {
+    const v = getVersionData()
+
+    reply(
+`🤖 BOT VERSION INFO
+
+📌 Version: ${v.version}
+🕒 Last Update: ${v.lastUpdate}
+💾 Rollback: ${v.rollbackAvailable ? "Available" : "Unavailable"}
+🌐 Repo: ${process.env.GITHUB_REPO || "Not Set"}
+`)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to fetch version")
+  }
+},
+
+// 🔥 .backupbot
+backupbot: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  try {
+    const backup = createBackup()
+
+    reply(`✅ Backup created:\n${backup}`)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Backup failed")
+  }
+},
+
+// 🔥 .rollbackbot
+rollbackbot: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  try {
+    const restored = restoreLatestBackup()
+
+    if (!restored) {
+      return reply("❌ No backup available")
+    }
+
+    reply(`✅ Rollback restored:\n${restored}\n♻️ Restarting...`)
+
+    process.exit(0)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Rollback failed")
+  }
+},
+
+// 🔥 .updatebot
 updatebot: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
-  reply("🔄 Updating bot from repository...")
+  try {
+    await reply("💾 Creating backup before update...")
+    const backup = createBackup()
 
-  exec("git pull && npm install", (err, stdout) => {
-    if (err) return reply("❌ Update failed")
+    const version = getVersionData()
+    version.rollbackAvailable = true
+    version.lastBackup = backup
+    saveVersionData(version)
 
-    reply(`
-✅ Update completed
+    await reply("🚀 Triggering Render deployment...")
 
-${stdout}
+    await triggerRenderDeploy()
 
-♻️ Restarting bot...
-    `)
-
-    setTimeout(() => process.exit(0), 3000)
-  })
+    reply("✅ Render redeploy started successfully")
+  } catch (e) {
+    console.log("UPDATEBOT ERROR:", e)
+    reply(`❌ Update failed: ${e.message}`)
+  }
 },
 
       // ===== MENU =====
       
 menu: async () => {
-
   
-const BOT_VERSION = {
-  version: "2.0.0",
-  latest: "2.1.0",
-  status: "stable"
-}
+  // ===== BOT VERSION =====
+  const BOT_VERSION = getVersionData ? getVersionData() : {
+    version: "1.0.0",
+    latest: "1.0.0"
+  }
 
-const isOutdated = BOT_VERSION.version !== BOT_VERSION.latest
+    const isOutdated =
+    BOT_VERSION.version !== BOT_VERSION.latest
+
 
   const header = getHeader()
   
-
-  const from = msg.key.remoteJid
-  const userJid = msg.key.participant || msg.key.remoteJid
+ const from = msg.key.remoteJid 
+ const userJid = msg.key.participant || msg.key.remoteJid
 
   const pushName =
     msg.pushName ||
     msg.name ||
     "Unknown User"
 
-  // 🧠 ROLE SYSTEM
+ // ===== ROLE SYSTEM =====
   let role = "👤 User"
 
   try {
@@ -1698,8 +2415,49 @@ const isOutdated = BOT_VERSION.version !== BOT_VERSION.latest
         }
       }
     }
-  } catch (err) {
+  } catch {
     role = "👤 User"
+  }
+
+// 📸 PROFILE PICTURE 
+
+ // ===== PROFILE PICTURE FIX =====
+  let profileBuffer = null
+
+  try {
+    // First try direct profile picture
+    const ppUrl = await sock.profilePictureUrl(userJid, "image")
+
+    if (ppUrl) {
+      const response = await fetch(ppUrl)
+      const arrayBuffer = await response.arrayBuffer()
+      profileBuffer = Buffer.from(arrayBuffer)
+    }
+  } catch (err) {
+    console.log("Profile pic fetch failed:", err)
+  }
+
+  // ===== FALLBACK TO CYBER MENU IMAGE =====
+  if (!profileBuffer) {
+    try {
+      const fallbackImages = [
+        "https://files.catbox.moe/7an50c.jpg",
+        "https://files.catbox.moe/j7w0r3.jpg",
+        "https://files.catbox.moe/0f8v6t.jpg"
+      ]
+
+      const fallback =
+        fallbackImages[
+          Math.floor(Math.random() * fallbackImages.length)
+        ]
+
+      const response = await fetch(fallback)
+      const arrayBuffer = await response.arrayBuffer()
+      profileBuffer = Buffer.from(arrayBuffer)
+
+    } catch {
+      profileBuffer = null
+    }
   }
 
   // 📊 SYSTEM INFO
@@ -1722,17 +2480,21 @@ const isOutdated = BOT_VERSION.version !== BOT_VERSION.latest
   const hour = new Date().getHours()
   const greet =
     hour < 12 ? "🌅 Good Morning" :
-    hour < 18 ? "🌞 Good Afternoon" :
+    hour < 16 ? "🌞 Good Afternoon" :
                 "🌙 Good Evening"
 
  if (!isOwner) return reply("❌ Owner only")
+  
 
   // 📜 MENU TEXT
+
   let text = `
 ${header}
 ╰━━━━━━━━━━━━━━━━━━━╯
 
 ${greet}, ${pushName} 👋
+How can I be of help to you now?
+I am glad to help you out
 
 ━━━━━━━━━━━━━━━━━━━━
 👑 *OWNER PANEL*
@@ -1763,99 +2525,64 @@ ${ownerText}
 │ 🧠 Total: ${totalRAM} GB
 │ 🧹 Free: ${freeRAM} GB
 ╰───────────────╯
+`
+const grouped = groupCommands(COMMANDS)
 
+  for (const [title, cmds] of Object.entries(grouped)) {
+    if (!cmds.length) continue
+
+    text += `
 ━━━━━━━━━━━━━━━━━━━━
-🛡️ *GROUP PROTECTION*
+╭─「 ${title} 」─╮
+${cmds.join("\n")}
+╰────────────────────╯
+`
+  }
+
+  text += `
+━━━━━━━━━━━━━━━━━━━━
+📦 *BOT VERSION*
 ╭───────────────╮
-│ 🚫 .antilink → Block links
-│ 🧼 .antibadword → Filter bad words
-│ 🕵️ .antidelete → Recover deleted msgs
+│ 📌 Current: ${BOT_VERSION.version}
+│ 🆕 Latest: ${BOT_VERSION.latest}
+│ 📊 Status: ${isOutdated ? "⚠️ OUTDATED" : "✅ UP TO DATE"}
 ╰───────────────╯
 
 ━━━━━━━━━━━━━━━━━━━━
-👥 *ADMIN MODERATION*
-╭───────────────╮
-│ ➕ .add → Add member
-│ 🥾 .kick → Remove member
-│ ⬆️ .promote → Make admin
-│ ⬇️ .demote → Remove admin
-│ 📣 .tagall → Mention everyone
-╰───────────────╯
 
-━━━━━━━━━━━━━━━━━━━━
-⚙️ *GROUP MANAGEMENT*
-╭───────────────╮
-│ ✏️ .setname → Change group name
-│ 📝 .setdesc → Set group description
-│ 🔒 .lock → Lock group
-│ 🔓 .unlock → Unlock group
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-🎨 *MEDIA*
-╭───────────────╮
-│ 🎥 .vv → View once extraction
-│ 🖼️ .pp → Profile picture
-│ 🧩 .sticker → Create sticker
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-👑 *OWNER*
-╭───────────────╮
-│ 🔄 .restart → Reboot system instantly
-│ ⛔ .shutdown → Power off bot safely
-│ 🛠️ .update → Refresh bot files
-│ 📂 .backup → Save bot data
-│ 📡 .broadcast → Send message to all chats
-│ 🚷 .ban → Block user access
-│ ✅ .unban → Restore user access
-╰───────────────╯
-━━━━━━━━━━━━━━━━━━━━
-🔐 *MODE CONTROL*
-╭───────────────╮
-│ 🌍 .mode public → Everyone can use bot
-│ 🔒 .mode private → Owner-only access
-│ 👥 .mode group → Group chats only
-│ 💬 .mode dm → Direct messages only
-│ ⚡ .mode auto → Smart access control
-│ 📊 .mode → View current mode
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-ℹ️ *INFO*
-╭───────────────╮
-│ 🤖 .alive → Bot status
-│ 📜 .menu → Show menu
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-🛠️ *BOT UPDATE*
-╭───────────────╮
-│📦 .Version  → View bot current version
-│⚙️ .updatebot  → Version update
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-ℹ️ *BOT INFO*
-╭───────────────╮
-│ 📦 Version: ${BOT_VERSION.version}
-│  🆕 Latest: ${BOT_VERSION.latest}
-│  📊 Status: ${isOutdated ? "⚠️ OUTDATED" : "✅ UP TO DATE"}
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-⚡ *𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 𝐁𝐎𝐓* ⚡
-✨ Clean • Smart • Powerful
- Your wish is my command 🤭
+╔════════════════════════════╗
+║ ✨ Clean • Smart • Powerful ✨ 
+║   Your wish is my command 🤭   
+╚════════════════════════════╝
 `
 
-  // 📤 SEND TEXT MENU (NO IMAGE)
-  return sock.sendMessage(from, {
-    text: text,
-    mentions: BOT_OWNERS
-  }, { quoted: msg })
+
+ // ===== SEND MENU WITH WORKING IMAGE =====
+  if (profileBuffer) {
+    return sock.sendMessage(
+      from,
+      {
+        image: profileBuffer,
+        caption: text,
+        mentions: BOT_OWNERS
+      },
+      { quoted: msg }
+    )
+  }
+
+  // fallback to text-only if image fully fails
+  return sock.sendMessage(
+    from,
+    {
+      text,
+      mentions: BOT_OWNERS
+    },
+    { quoted: msg }
+  )
 }
-}
+    }
+
+    
 
 
     // ================= EXECUTION =================
