@@ -152,7 +152,12 @@ const defaultVersionData = {
 
 // ===== OPTIONAL LOCAL BACKUP =====
 const BACKUP_DIR = "./backups"
-if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR)
+
+// ===== INIT =====
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true })
+}
+
 
 // ===== VERSION FILE =====
 const VERSION_FILE = "./version.json"
