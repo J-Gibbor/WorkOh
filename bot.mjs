@@ -854,6 +854,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   stats: "📊",
   ping: "🏓",
   menu: "📃",
+  settings: "🛠️",
 
   packcreate: "📦",
   packadd: "➕",
@@ -1151,15 +1152,17 @@ try {
   }
 },
 
-// ================= FIXED MEMESTICKER (VISIBLE TEXT + AUTO DELETE COMMAND) =================
-
+// ================= FIXED MEMESTICKER (NO OVERFLOW + PERFECT CENTER) =================
 memesticker: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
   const text = args.join(" ").trim()
   if (!text) return reply("❌ Provide text")
 
-  // 🔥 DELETE USER COMMAND MESSAGE AFTER 2s
+  // 🔥 React first
+  await react("😂")
+
+  // 🔥 Auto-delete command after 2s
   setTimeout(async () => {
     try {
       await sock.sendMessage(jid, {
@@ -1176,52 +1179,81 @@ memesticker: async () => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 
-  // ===== MULTILINE WRAP =====
-  const words = safeText.split(" ")
+  // ===== SMART WORD WRAP =====
+  const maxCharsPerLine = 14
+  const words = safeText.split(/\s+/)
+
   const lines = []
-  let line = ""
+  let currentLine = ""
 
   for (const word of words) {
-    if ((line + word).length > 18) {
-      lines.push(line.trim())
-      line = word + " "
+    // break very long single words
+    if (word.length > maxCharsPerLine) {
+      if (currentLine) {
+        lines.push(currentLine.trim())
+        currentLine = ""
+      }
+
+      for (let i = 0; i < word.length; i += maxCharsPerLine) {
+        lines.push(word.slice(i, i + maxCharsPerLine))
+      }
+      continue
+    }
+
+    if ((currentLine + " " + word).trim().length <= maxCharsPerLine) {
+      currentLine += ` ${word}`
     } else {
-      line += word + " "
+      lines.push(currentLine.trim())
+      currentLine = word
     }
   }
 
-  if (line.trim()) lines.push(line.trim())
+  if (currentLine.trim()) lines.push(currentLine.trim())
 
-  // ===== CENTERED TEXT =====
-  const startY =
-    lines.length === 1
-      ? 256
-      : 180
+  // ===== LIMIT MAX LINES =====
+  const finalLines = lines.slice(0, 7)
 
-  const textElements = lines
-    .map((l, i) => {
-      const y = startY + i * 55
+  // ===== DYNAMIC FONT SIZE =====
+  let fontSize = 48
+  if (finalLines.length >= 5) fontSize = 34
+  if (finalLines.length >= 6) fontSize = 30
+  if (finalLines.length >= 7) fontSize = 26
+
+  const lineHeight = fontSize + 14
+
+  // ===== TRUE VERTICAL CENTER =====
+  const totalHeight = finalLines.length * lineHeight
+  const startY = (512 - totalHeight) / 2 + fontSize
+
+  // ===== SVG TEXT =====
+  const textElements = finalLines
+    .map((line, i) => {
+      const y = startY + i * lineHeight
+
       return `
+      <!-- Outline -->
       <text
         x="256"
         y="${y}"
-        font-size="42"
+        font-size="${fontSize}"
         font-family="Arial"
         font-weight="bold"
         text-anchor="middle"
-        fill="black">
-        ${l}
+        dominant-baseline="middle"
+        stroke="black"
+        stroke-width="4"
+        paint-order="stroke"
+        fill="white">
+        ${line}
       </text>`
     })
     .join("")
 
-  // ===== USE GENERATED TEXT ELEMENTS =====
+  // ===== SVG CANVAS =====
   const svg = `
- <svg width="512" height="512">
+  <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
     <rect width="100%" height="100%" fill="white"/>
-    <text x="50%" y="50%" font-size="40" text-anchor="middle" fill="black">
-      ${text}
-    </text>
+    ${textElements}
   </svg>`
 
   try {
@@ -1527,17 +1559,32 @@ pack_send: async () => {
   reply(`🧼 Anti-badword ${group_settings.antibadword ? "ON" : "OFF"}`)
 },
 
-      settings: async () => {
-         if (!isOwner && !isAdmin) return reply("❌ Owner only")
-        reply(`⚙️ SETTINGS\n
-          Anti-Delete: ${group_settings.antidelete}\n
-          Anti-Link: ${group_settings.antilink}\n
-          Anti-BadWord: ${group_settings.antibadword}
-          Bot Mode: ${settings.mode}\n
-          Anti-Status: ${group_settings.antistatus}\n
-          Antistatus_Mention: ${group_settings.antistatus_mention}`)
-      },
+     settings: async () => {
+  if (!isOwner) {
+    await react("❌")
+    return reply("❌ Admin or Bot owner only")
+  }
 
+  reply(
+`⚙️ *SETTINGS PANEL*
+
+🛡️ *Protection*
+🧠 Anti-Delete: ${group_settings.antidelete ? "✅ ON" : "❌ OFF"}
+🔗 Anti-Link: ${group_settings.antilink ? "✅ ON" : "❌ OFF"}
+🧼 Anti-Badword: ${group_settings.antibadword ? "✅ ON" : "❌ OFF"}
+
+👁️ *Status Protection*
+🚫 Anti-Status: ${group_settings.antistatus ? "✅ ON" : "❌ OFF"}
+📢 Anti-Status Mention: ${group_settings.antistatus_mention ? "✅ ON" : "❌ OFF"}
+
+🔐 *Bot Mode*
+⚙️ Mode: ${String(settings.mode || "public").toUpperCase()}
+
+📊 *System*
+👥 Group: ${isGroup ? "✅ Group Chat" : "❌ Private Chat"}
+👑 Your Role: ${isOwner ? "Bot Owner" : isAdmin ? "Group Admin" : "Member"}`
+  )
+},
       // ===== ADMIN =====
       kick: async () => {
         if (!isGroup) return reply("❌ Group only")
