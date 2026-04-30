@@ -2572,7 +2572,7 @@ ${cmds.join("\n")}
 `
  // ===== SEND MENU WITH WORKING IMAGE =====
 return sock.sendMessage(from, {
-   image: { url: profilePic }, 
+   image: { url: randomImage }, 
    caption: text, 
    mentions: BOT_OWNERS 
   }, { quoted: msg }
