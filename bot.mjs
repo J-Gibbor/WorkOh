@@ -472,7 +472,7 @@ async function start(session) {
       auth: state,
       logger,
       printQRInTerminal: false,
-      markOnlineOnConnect: true,
+      markOnlineOnConnect: false,
       emitOwnEvents: true,
       syncFullHistory: false,
       browser: ["Chrome (Linux)", "Chrome", "120.0.0"],
@@ -536,7 +536,7 @@ async function start(session) {
     if (!global.presenceInterval) {
       global.presenceInterval = setInterval(() => {
           sock.sendPresenceUpdate("unavailable")
-      }, 60000)
+      }, 1000)
     }
   }
 
