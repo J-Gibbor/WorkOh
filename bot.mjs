@@ -341,6 +341,8 @@ const COMMANDS = {
   unlock: "🔓 Unlock group chat",
 
   // 🎨 MEDIA
+  // 👁️ STATUS
+  getstatus: "📥 Extract WhatsApp status (image/video/text from reply)",
   vv: "👁️ Recover view-once media",
   pp: "🖼️ HD profile picture fetch",
   sticker: "🎭 Convert image to sticker",
@@ -424,7 +426,7 @@ const groupCommands = (cmdObj) => {
   groups["⚠️ WARNING SYSTEM"].push(line)
 }
 
-    else if (["vv","pp","sticker","stickergif","memesticker","captionsticker","stickerpack"].includes(cmd)) {
+    else if (["getstatus","vv","pp","sticker","stickergif","memesticker","captionsticker","stickerpack"].includes(cmd)) {
       groups["🎨 MEDIA"].push(line)
     }
 
