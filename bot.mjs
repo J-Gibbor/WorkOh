@@ -740,6 +740,68 @@ const reply = async (text) => {
     }
   }
 
+  // ================= ANTI STATUS FIX =================
+if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention)) {
+  try {
+    const isStatus = jid === "status@broadcast"
+
+    if (isStatus) {
+
+      const senderId = sender
+
+      // 🚫 DELETE STATUS VIEW MESSAGE (if possible)
+      try {
+        await sock.sendMessage(jid, { delete: msg.key })
+      } catch {}
+
+      // ================= WARN SYSTEM =================
+      warns[senderId] = (warns[senderId] || 0) + 1
+
+      await sock.sendMessage(jid, {
+        text: `🚫 Anti-Status Triggered\n\n👤 User: @${senderId.split("@")[0]}\n⚠️ Warn: ${warns[senderId]}/3`,
+        mentions: [senderId]
+      })
+
+      // ================= AUTO KICK =================
+      if (warns[senderId] >= WARN_LIMIT) {
+        await sock.groupParticipantsUpdate(jid, [senderId], "remove")
+        delete warns[senderId]
+
+        await sock.sendMessage(jid, {
+          text: `🚨 Removed @${senderId.split("@")[0]} for status abuse`,
+          mentions: [senderId]
+        })
+      }
+    }
+
+    // ================= ANTI STATUS MENTION =================
+    const text =
+      msg.message?.extendedTextMessage?.text ||
+      msg.message?.conversation ||
+      ""
+
+    if (group_settings.antistatus_mention && text.includes("@")) {
+
+      await sock.sendMessage(jid, { delete: msg.key })
+
+      warns[sender] = (warns[sender] || 0) + 1
+
+      await sock.sendMessage(jid, {
+        text: `📢 Anti-Status Mention Blocked\n\n👤 @${sender.split("@")[0]}\n⚠️ Warn: ${warns[sender]}/3`,
+        mentions: [sender]
+      })
+
+      if (warns[sender] >= WARN_LIMIT) {
+        await sock.groupParticipantsUpdate(jid, [sender], "remove")
+        delete warns[sender]
+      }
+    }
+
+  } catch (e) {
+    console.log("❌ Anti-status error:", e)
+  }
+}
+
     // ================= ANTI DELETE =================
     if (group_settings.antidelete) {
       const proto = msg.message?.protocolMessage
