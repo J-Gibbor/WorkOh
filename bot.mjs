@@ -2634,13 +2634,11 @@ return sock.sendMessage(from, {
    if (commands[cmd]) {
 
      try {
-       await react(jid, msg.key, "⏳")
-       BOT_STATS.commands++
        await COMMANDS[cmd](args, { sock, msg, jid, reply })
+       BOT_STATS.commands++
       } catch (e) {
         console.log(e)
-        await react(jid, msg.key, "❌")
-        reply("Error")
+        reply("Error to execute command")
       }
     }
   })
