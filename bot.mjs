@@ -197,6 +197,7 @@ const COMMANDS = {
   // 👥 ADMIN
   kick: "👢 Remove a user from group",
   add: "➕ Add user to group",
+  invite: "🔗 Sends group invite link to a user",
   promote: "⬆️ Promote user to admin",
   demote: "⬇️ Remove admin privileges",
   tagall: "📣 Mention all members",
@@ -277,7 +278,7 @@ const groupCommands = (cmdObj) => {
       groups["🛡️ GROUP PROTECTION"].push(line)
     }
 
-    else if (["kick","add","promote","demote","tagall","hidetag","tagonline"].includes(cmd)) {
+    else if (["kick","add", "invite","promote","demote","tagall","hidetag","tagonline"].includes(cmd)) {
       groups["👥 ADMIN MODERATION"].push(line)
     }
 
@@ -487,101 +488,77 @@ async function start(session) {
     sock.ev.on("creds.update", saveCreds)
 
     // ===== CONNECTION HANDLER =====
-   sock.ev.on("connection.update", async (u) => {
-  const { connection, qr, lastDisconnect } = u
-
-  // ===== QR HANDLING =====
-  if (qr) {
-    qrCount++
-
+  sock.ev.on("connection.update", async (u) => {
+        const { connection, qr, lastDisconnect } = u
+  
+        if (qr) {
+          qrCount++
     if (qrCount > 6) {
       console.log("❌ Too many QR attempts, restarting clean session...")
       process.exit(1)
     }
-
-    CURRENT_QR = await QRCode.toDataURL(qr)
-    console.log("📱 QR READY")
-  }
-
-  // ===== SUCCESSFUL CONNECTION =====
-  if (connection === "open") {
-    CURRENT_QR = ""
-    global.isReconnecting = false
-    reconnecting = false
-
-    console.log("✅ Bot connected")
-
-    const botId = normalizeJid(sock.user.id)
-
-    // 👑 OWNER NUMBERS
-    const myNumbers = [
-      "2347044625110@s.whatsapp.net",
-      "2349021540840@s.whatsapp.net"
-    ]
-
-    // Add bot + owners safely
-    ;[botId, ...myNumbers].forEach((id) => {
-      const clean = normalizeJid(id)
-      if (!BOT_OWNERS.includes(clean)) {
-        BOT_OWNERS.push(clean)
+          CURRENT_QR = await QRCode.toDataURL(qr)
+          console.log("📱 QR READY")
+        }
+  
+        if (connection === "open") {
+          CURRENT_QR = ""
+          reconnecting = false
+  
+          console.log("✅ Bot connected")
+  
+          const botId = normalizeJid(sock.user.id)
+  const myNumber = ["2347044625110@s.whatsapp.net", "2349021540840@s.whatsapp.net"] // 👈 PUT YOUR NUMBER
+  
+  const ids = [botId, myNumber]
+  
+  ids.forEach(id => {
+    const clean = normalizeJid(id)
+    if (!BOT_OWNERS.includes(clean)) {
+      BOT_OWNERS.push(clean)
+    }
+  })
+  
+  saveOwners()
+  
+  console.log("🤖 Logged in as:", botId)
+  console.log("👑 Owners:", BOT_OWNERS)
+  
+          // ✅ PREVENT MULTIPLE INTERVALS
+          
+            setInterval(() => {
+              try {
+                sock.sendPresenceUpdate("unavailable")
+              } catch {}
+            }, 15000)
+          }
+  
+        if (connection === "close") {
+          
+           const statusCode = lastDisconnect?.error?.output?.statusCode
+  
+      console.log("❌ Disconnected:", statusCode)
+  
+      // ❌ Logged out (DO NOT reconnect)
+      if (statusCode === 401 || statusCode === 405) {
+        console.log("⚠️ Logged out → delete auth folder")
+        return
       }
-    })
-
-    saveOwners()
-
-    console.log("🤖 Logged in as:", botId)
-    console.log("👑 Owners:", BOT_OWNERS)
-
-    // ===== PREVENT MULTIPLE PRESENCE INTERVALS =====
-    if (!global.presenceInterval) {
-      global.presenceInterval = setInterval(() => {
-          sock.sendPresenceUpdate("unavailable")
-      }, 1000)
-    }
-  }
-
-  // ===== DISCONNECTION HANDLING =====
-  if (connection === "close") {
-    const statusCode =
-      lastDisconnect?.error?.output?.statusCode ||
-      lastDisconnect?.error?.statusCode
-
-    console.log("❌ Disconnected:", statusCode)
-
-    // Prevent duplicate reconnect loops
-    global.isReconnecting = global.isReconnecting || false
-    if (global.isReconnecting) return
-
-    global.isReconnecting = true
-
-    // ===== SESSION CONFLICT =====
-    if (statusCode === 440) {
-      console.log("⚠️ Session conflict detected.")
-
-        sock.ws?.close()
-        sock.end?.()
-
-      setTimeout(async () => {
-        global.isReconnecting = false
-        await start(session)
+  
+        if (!reconnecting) {
+      reconnecting = true
+  
+      setTimeout(() => {
+        reconnecting = false
+        start(session)
       }, 5000)
-
-    // ===== SESSION LOGGED OUT =====
-    } else if (statusCode === 401) {
-      console.log("❌ Session expired. Delete auth folder and re-scan QR.")
-      process.exit()
-
-    // ===== NORMAL RECONNECT =====
-    } else {
+    }
+  
+      // 🔄 Safe reconnect
       console.log("🔄 Reconnecting safely in 5s...")
-
-      setTimeout(async () => {
-        global.isReconnecting = false
-        await start(session)
-      }, 5000)
-    }
-  }
-})
+      setTimeout(() => start(session), 5000)
+        }
+      })
 
   const react = (jid, key, emoji) =>
     sock.sendMessage(jid, { react: { text: emoji, key } })
@@ -825,6 +802,68 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
       }
     }
 
+  // COMMAND EMOJI MAP
+
+  const COMMAND_REACTIONS = {
+  antilink: "🚫",
+  antibadword: "🧼",
+  antidelete: "🧠",
+  antistatus: "👁️",
+  antistatusmention: "📢",
+
+  kick: "👢",
+  add: "➕",
+  invite: "🔗",
+  promote: "⬆️",
+  demote: "⬇️",
+  tagall: "📣",
+  hidetag: "👻",
+  tagonline: "🟢",
+
+  setname: "✏️",
+  setdesc: "📝",
+  groupinfo: "📊",
+  grouplink: "🔗",
+  revoke: "♻️",
+  lock: "🔒",
+  unlock: "🔓",
+
+  getstatus: "📥",
+  vv: "👁️",
+  pp: "🖼️",
+  sticker: "🎭",
+  stickergif: "🎬",
+  memesticker: "😂",
+  captionsticker: "✍️",
+  stickerpack: "📦",
+
+  addowner: "👑",
+  delowner: "🗑️",
+  owners: "📋",
+  restart: "🔄",
+  shutdown: "⛔",
+  broadcast: "📢",
+  ban: "🚷",
+  unban: "✅",
+
+  warn: "⚠️",
+  warnlist: "📋",
+  warninfo: "👤",
+  unwarn: "🧹",
+
+  mode: "⚙️",
+  alive: "💚",
+  whoami: "🆔",
+  stats: "📊",
+  ping: "🏓",
+
+  packcreate: "📦",
+  packadd: "➕",
+  packview: "👀",
+  packlist: "📚",
+  packdelete: "🗑️",
+  packsend: "🎲",
+}
    
 
     // ================= COMMAND =================
@@ -836,6 +875,16 @@ if (!isCommand) return
 // ===== PARSE =====
 const args = body.slice(1).trim().split(/ +/)
 const cmd = args.shift()?.toLowerCase() || ""
+
+// 👉 send reaction first
+if (COMMAND_REACTIONS[cmd]) {
+  await sock.sendMessage(jid, {
+    react: {
+      text: COMMAND_REACTIONS[cmd],
+      key: msg.key
+    }
+  })
+}
 
 // ================= MODES =================
 const botMode = settings?.mode || "public"
@@ -1157,7 +1206,7 @@ memesticker: async () => {
   <svg width="512" height="512">
     <rect width="100%" height="100%" fill="white"/>
     <text x="50%" y="50%" font-size="40" text-anchor="middle" fill="black">
-      ${text}
+      ${textElements}
     </text>
   </svg>`
 
@@ -1465,9 +1514,11 @@ pack_send: async () => {
 },
 
       settings: async () => {
+         if (!isOwner && !isAdmin) return reply("❌ Owner only")
         reply(`⚙️ SETTINGS\n
-          AntiDelete: ${group_settings.antidelete}\n
-          AntiLink: ${group_settings.antilink}\n
+          Anti-Delete: ${group_settings.antidelete}\n
+          Anti-Link: ${group_settings.antilink}\n
+          Anti-BadWord: ${group_settings.antibadword}
           Bot Mode: ${settings.mode}\n
           Anti-Status: ${group_settings.antistatus}\n
           Antistatus_Mention: ${group_settings.antistatus_mention}`)
@@ -2581,11 +2632,11 @@ return sock.sendMessage(from, {
 }
     // ================= EXECUTION =================
    if (commands[cmd]) {
+
      try {
        await react(jid, msg.key, "⏳")
-       await commands[cmd]()
        BOT_STATS.commands++
-       await react(jid, msg.key, "✅")
+       await COMMANDS[cmd](args, { sock, msg, jid, reply })
       } catch (e) {
         console.log(e)
         await react(jid, msg.key, "❌")
