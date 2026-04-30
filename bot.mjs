@@ -650,8 +650,16 @@ const reply = async (text) => {
   }
 }
 
-    const getTarget = () =>
-      msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+    const getTarget = () => {
+  const context = msg.message?.extendedTextMessage?.contextInfo
+
+  return (
+    context?.mentionedJid?.[0] ||
+    context?.participant ||
+    msg.key.participant ||   // group sender fallback
+    msg.key.remoteJid
+  )
+}
 
     // ================= SAVE MESSAGE =================
     // ===== LIGHTWEIGHT MESSAGE STORE (ANTI-MEMORY LEAK) =====
@@ -2494,13 +2502,7 @@ ${cmds.join("\n")}
 ║ ✨ Clean • Smart • Powerful ✨ 
 ║   Your wish is my command 🤭   
 ╚════════════════════════════╝
-
-
-
-
 `
-
-
  // ===== SEND MENU WITH WORKING IMAGE =====
   if (profileBuffer) {
     return sock.sendMessage(
@@ -2525,10 +2527,6 @@ ${cmds.join("\n")}
   )
 }
     }
-
-    
-
-
     // ================= EXECUTION =================
    if (commands[cmd]) {
      try {
