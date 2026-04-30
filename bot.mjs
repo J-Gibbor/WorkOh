@@ -560,9 +560,6 @@ async function start(session) {
         }
       })
 
-  const react = (jid, key, emoji) =>
-    sock.sendMessage(jid, { react: { text: emoji, key } })
-
 
  // ================= EVENTS =================
 
@@ -710,7 +707,7 @@ const reply = async (text) => {
 
         await addWarn(sock, jid, sender, "Bad word detected")
 
-        await react(jid, msg.key, "🧼")
+        await reaction(jid, msg.key, "🧼")
 
         return
       }
