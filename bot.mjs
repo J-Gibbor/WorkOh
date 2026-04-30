@@ -74,9 +74,10 @@ const BOT_STATS = {
   commands: 0
 }
 
-let warns = {} // already exists in your code, keep it global
+let warns = {} 
 // ================= WARN DATABASE =================
 const WARN_DB = global.WARN_DB || (global.WARN_DB = {})
+
 
 const WARN_LIMIT = 3
 
@@ -141,9 +142,10 @@ const addWarn = async (sock, jid, user, reason) => {
 }
 
 
+
 // ===== SAFE DEPLOY HOOK =====
 const triggerRenderDeploy = async () => {
-  const hook = process.env.RENDER_DEPLOY_HOOK
+  const hook = process.env.RENDER_DEPLOY_HOOK 
 
   if (!hook) {
     throw new Error("Missing RENDER_DEPLOY_HOOK in environment")
@@ -205,13 +207,27 @@ const COMMANDS = {
   tagonline: "🟢 Tag active members",
 
   // ⚙️ GROUP
-  setname: "✏️ Change group name",
-  setdesc: "📝 Update group description",
+setname: "✏️ Change group name",
+setdesc: "📝 Update group description",
   groupinfo: "📊 View group analytics",
   grouplink: "🔗 Get invite link",
   revoke: "♻️ Reset invite link",
   lock: "🔒 Lock group (admins only)",
   unlock: "🔓 Unlock group chat",
+   mute: "🔇 Mute a user",
+unmute: "🔊 Unmute a user",
+mutelist: "📋 View muted users",
+clearlinks: "🧹 Reinforce anti-link",
+opentemp: "🔓 Open group temporarily",
+closetemp: "🔒 Lock group temporarily",
+
+  // 🕒 SCHEDULE
+  setopen: "🌅 Set daily group opening time",
+  setclose: "🌙 Set daily group closing time",
+  schedule: "📅 View group schedule",
+  scheduleon: "✅ Enable group schedule",
+  scheduleoff: "⛔ Disable group schedule",
+  delschedule: "🗑️ Delete group schedule",
 
   // 🎨 MEDIA
   // 👁️ STATUS
@@ -233,12 +249,16 @@ const COMMANDS = {
   broadcast: "📢 Send message to all chats",
   ban: "🚷 Block user access",
   unban: "✅ Unblock user access",
+  pin: "📌 Pin a replied message (group or DM)",
+  unpin: "📍 Unpin a pinned message",
 
     // ⚠️ WARNING SYSTEM
   warn: "⚠️ Warn a user (auto kick at 3 warns)",
   warnlist: "📋 View all warnings in group",
   warninfo: "👤 Check a user warning history",
   unwarn: "🧹 Clear user warnings",
+  resetwarns: "♻️ Clear all warnings",
+ 
 
   // 🔐 MODE
  mode: "⚙️ Switch bot operating mode (public/private/group/dm/auto)",
@@ -263,6 +283,7 @@ const groupCommands = (cmdObj) => {
     "🛡️ GROUP PROTECTION": [],
     "👥 ADMIN MODERATION": [],
     "⚙️ GROUP MANAGEMENT": [],
+    "🕒 SCHEDULE": [],
     "⚠️ WARNING SYSTEM": [],
     "🎨 MEDIA": [],
     "📦 STICKER PACK SYSTEM": [],
@@ -282,11 +303,16 @@ const groupCommands = (cmdObj) => {
       groups["👥 ADMIN MODERATION"].push(line)
     }
 
-    else if (["setname","setdesc","groupinfo","grouplink","revoke","lock","unlock"].includes(cmd)) {
+    else if (["setname","setdesc","groupinfo","grouplink","revoke","lock","unlock","mute","unmute","mutelist","clearlinks","opentemp","closetemp"].includes(cmd)) {
       groups["⚙️ GROUP MANAGEMENT"].push(line)
+    
     }
 
-    else if (["warn","warnlist","warninfo","unwarn"].includes(cmd)) {
+    else if (["setopen","setclose","schedule","scheduleon","scheduleoff","delschedule"].includes(cmd)) {
+      groups["🕒 SCHEDULE"].push(line)
+    }
+
+    else if (["warn","warnlist","warninfo","unwarn","resetwarns"].includes(cmd)) {
   groups["⚠️ WARNING SYSTEM"].push(line)
 }
 
@@ -294,7 +320,7 @@ const groupCommands = (cmdObj) => {
       groups["🎨 MEDIA"].push(line)
     }
 
-    else if (["addowner","delowner","owners","restart","shutdown","broadcast","ban","unban"].includes(cmd)) {
+    else if (["addowner","delowner","owners","restart","shutdown","broadcast","ban","unban","pin","unpin"].includes(cmd)) {
       groups["👑 OWNER CONTROL"].push(line)
     }
 
@@ -403,6 +429,12 @@ const STORE_FILE = "./msg-store.json"
 const OWNERS_FILE = "./owners.json"
 const SETTINGS_FILE = "./settings.json"
 
+
+// Optional save function
+const saveGroupSchedules = () => {
+  fs.writeFileSync("./group_schedules.json", JSON.stringify(GROUP_SCHEDULES, null, 2))
+}
+
 let GROUP_SETTINGS = fs.existsSync(GROUP_SETTINGS_FILE) ? JSON.parse(fs.readFileSync(GROUP_SETTINGS_FILE)) : {}
 
 let SETTINGS = fs.existsSync(SETTINGS_FILE) ? JSON.parse(fs.readFileSync(SETTINGS_FILE)) : {}
@@ -508,7 +540,9 @@ async function start(session) {
           console.log("✅ Bot connected")
   
           const botId = normalizeJid(sock.user.id)
-  const myNumber = ["2347044625110@s.whatsapp.net", "2349021540840@s.whatsapp.net"] // 👈 PUT YOUR NUMBER
+  const myNumber = [
+    "2347044625110@s.whatsapp.net",
+     "2349021540840@s.whatsapp.net"]
   
   const ids = [botId, myNumber]
   
@@ -816,6 +850,8 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   tagall: "📣",
   hidetag: "👻",
   tagonline: "🟢",
+  delete: "❌",
+  del: "🧼",
 
   setname: "✏️",
   setdesc: "📝",
@@ -842,6 +878,8 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   broadcast: "📢",
   ban: "🚷",
   unban: "✅",
+  pin:"📌",
+  unpin:"📍",
 
   warn: "⚠️",
   warnlist: "📋",
@@ -899,7 +937,61 @@ const react = async (emoji) => {
   }
 }
 
+// ===== AUTO SCHEDULER CHECKER =====
+// Place ONCE globally (outside commands)
+setInterval(async () => {
+  try {
+    const now = moment().tz("Africa/Lagos").format("HH:mm")
 
+    for (const groupId of Object.keys(GROUP_SCHEDULES)) {
+      const schedule = GROUP_SCHEDULES[groupId]
+      if (!schedule || !schedule.enabled) continue
+
+      // ===== AUTO OPEN =====
+      if (schedule.open === now && schedule.lastOpen !== now) {
+        try {
+          await sock.groupSettingUpdate(groupId, "not_announcement")
+
+          await sock.sendMessage(groupId, {
+            text:
+`🔓 *SCHEDULED GROUP OPENED*
+
+⏰ Time: ${schedule.open}`
+          })
+
+          schedule.lastOpen = now
+          saveGroupSchedules()
+
+        } catch (e) {
+          console.log("AUTO OPEN ERROR:", e)
+        }
+      }
+
+      // ===== AUTO CLOSE =====
+      if (schedule.close === now && schedule.lastClose !== now) {
+        try {
+          await sock.groupSettingUpdate(groupId, "announcement")
+
+          await sock.sendMessage(groupId, {
+            text:
+`🔒 *SCHEDULED GROUP CLOSED*
+
+⏰ Time: ${schedule.close}`
+          })
+
+          schedule.lastClose = now
+          saveGroupSchedules()
+
+        } catch (e) {
+          console.log("AUTO CLOSE ERROR:", e)
+        }
+      }
+    }
+
+  } catch (e) {
+    console.log("SCHEDULER ERROR:", e)
+  }
+}, 30000) // checks every 30s
 
 // ================= MODES =================
 const botMode = settings?.mode || "public"
@@ -1243,7 +1335,7 @@ memesticker: async () => {
         stroke="black"
         stroke-width="4"
         paint-order="stroke"
-        fill="white">
+        fill="black">
         ${line}
       </text>`
     })
@@ -1610,6 +1702,8 @@ pack_send: async () => {
         return reply(" Removed as Admin 👮")
       },
 
+      // ======== WARNING ==========
+
       warn: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
@@ -1716,6 +1810,20 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
   reply(text)
 },
 
+// ================= RESET WARNS =================
+resetwarns: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("♻️")
+
+  WARN_DB[jid] = {}
+  saveWarnDB()
+
+  reply("♻️ All group warnings cleared")
+},
+
+
       viewadmins: async () => {
   if (!isGroup) return reply("❌ Group only")
     if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
@@ -1747,45 +1855,70 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 },
 
       // ===== OWNER =====
-  addowner: async () => {
-        if (!isOwner) return reply("❌ Owner only")
+  // 👑 ADD OWNER BY NUMBER (no @mentions)
+addowner: async () => {
+  if (!isOwner) return reply("❌ Owner only")
 
-        const target = getTarget()
-        if (!target) return reply("Mention user")
+  let number = args[0]?.replace(/\D/g, "")
+  if (!number) {
+    return reply("❌ Usage: .addowner 2348012345678")
+  }
 
-        const clean = normalizeJid(target)
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-        if (!BOT_OWNERS.includes(clean)) {
-          BOT_OWNERS.push(clean)
-          saveOwners()
-          reply("👑 Owner added successfully ✅")
-        } else {
-          reply("Already owner")
-        }
-      },
+  const clean = number + "@s.whatsapp.net"
 
-      delowner: async () => {
-        if (!isOwner) return reply("❌ Owner only")
+  if (!BOT_OWNERS.includes(clean)) {
+    BOT_OWNERS.push(clean)
+    saveOwners()
+    reply(`👑 Owner added successfully: ${number}`)
+  } else {
+    reply(`⚠️ ${number} is already an owner`)
+  }
+},
 
-        const target = getTarget()
-        if (!target) return reply("Mention user")
+// ❌ REMOVE OWNER BY NUMBER (no @mentions)
+delowner: async () => {
+  if (!isOwner) return reply("❌ Owner only")
 
-        const clean = normalizeJid(target)
+  let number = args[0]?.replace(/\D/g, "")
+  if (!number) {
+    return reply("❌ Usage: .delowner 2348012345678")
+  }
 
-        BOT_OWNERS = BOT_OWNERS.filter(
-          (x) => normalizeJid(x) !== clean
-        )
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-        saveOwners()
-        reply("👑 Owner removed successfully ❌")
-      },
+  const clean = number + "@s.whatsapp.net"
 
-      owners: async () => {
-        reply(
-          "👑 Owners:\n" +
-            BOT_OWNERS.map((o) => "@" + o.split("@")[0]).join("\n")
-        )
-      },
+  if (!BOT_OWNERS.includes(clean)) {
+    return reply(`⚠️ ${number} is not in owner list`)
+  }
+
+  BOT_OWNERS = BOT_OWNERS.filter(
+    (x) => normalizeJid(x) !== clean
+  )
+
+  saveOwners()
+  reply(`👑 Owner removed successfully: ${number}`)
+},
+
+// 📋 LIST OWNERS BY NUMBER ONLY
+owners: async () => {
+  if (!BOT_OWNERS.length) {
+    return reply("❌ No owners found")
+  }
+
+  reply(
+    "👑 Owners:\n" +
+    BOT_OWNERS.map((o, i) => `${i + 1}. ${o.split("@")[0]}`).join("\n")
+  )
+},
 
    restart: async () => {
   if (!isOwner) return reply("❌ Owner only")
@@ -1911,6 +2044,89 @@ unban: async () => {
 
   reply(`✅ User unbanned:\n@${target.split("@")[0]}`)
 },
+
+// =========== MUTE =========
+
+// ================= MUTE USER =================
+mute: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("🔇")
+
+  const target = normalizeJid(getTarget())
+  if (!target) return reply("❌ Mention user")
+
+  if (!MUTED_USERS[jid]) MUTED_USERS[jid] = []
+
+  if (MUTED_USERS[jid].includes(target)) {
+    return reply("❌ User already muted")
+  }
+
+  MUTED_USERS[jid].push(target)
+
+  reply(`🔇 @${target.split("@")[0]} has been muted`, {
+    mentions: [target]
+  })
+},
+
+// ================= UNMUTE USER =================
+unmute: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("🔊")
+
+  const target = normalizeJid(getTarget())
+  if (!target) return reply("❌ Mention user")
+
+  if (!MUTED_USERS[jid] || !MUTED_USERS[jid].includes(target)) {
+    return reply("❌ User is not muted")
+  }
+
+  MUTED_USERS[jid] = MUTED_USERS[jid].filter(u => u !== target)
+
+  reply(`🔊 @${target.split("@")[0]} has been unmuted`, {
+    mentions: [target]
+  })
+},
+
+// ================= MUTE LIST =================
+mutelist: async () => {
+  if (!isGroup) return reply("❌ Group only")
+
+  await react("📋")
+
+  const muted = MUTED_USERS[jid] || []
+
+  if (!muted.length) {
+    return reply("📭 No muted users")
+  }
+
+  const text =
+`🔇 *MUTED USERS LIST*
+
+${muted.map((u, i) => `${i + 1}. @${u.split("@")[0]}`).join("\n")}`
+
+  await sock.sendMessage(jid, {
+    text,
+    mentions: muted
+  })
+},
+
+// ================= DELETE ALL LINKS =================
+clearlinks: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("🧹")
+
+  group_settings.antilink = true
+  saveGroupSettings()
+
+  reply("🧹 Anti-link reinforced. New links will be auto-deleted.")
+},
+
 
 
       // ===== TAG =====
@@ -2097,20 +2313,218 @@ unlock: async () => {
   }
 },
 
-// ==== GROUP MANAGEMENT =====
-setname: async () => {
+// ================= GROUP OPEN TEMP =================
+opentemp: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  await sock.groupUpdateSubject(jid, args.join(" "))
-  reply("Group name updated ✅")
+
+  const minutes = parseInt(args[0])
+  if (!minutes || minutes < 1) {
+    return reply("❌ Usage: .opentemp <minutes>")
+  }
+
+  await react("🔓")
+
+  await sock.groupSettingUpdate(jid, "not_announcement")
+
+  reply(`🔓 Group opened for ${minutes} minute(s)`)
+
+  setTimeout(async () => {
+    try {
+      await sock.groupSettingUpdate(jid, "announcement")
+      reply("🔒 Group auto-locked again")
+    } catch (e) {
+      console.log("TEMP LOCK ERROR:", e)
+    }
+  }, minutes * 60000)
 },
 
-setdesc: async () => {
+// ================= GROUP CLOSE TEMP =================
+closetemp: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  await sock.groupUpdateDescription(jid, args.join(" "))
-  reply("📝Group Description updated successfully ✅")
+
+  const minutes = parseInt(args[0])
+  if (!minutes || minutes < 1) {
+    return reply("❌ Usage: .closetemp <minutes>")
+  }
+
+  await react("🔒")
+
+  await sock.groupSettingUpdate(jid, "announcement")
+
+  reply(`🔒 Group locked for ${minutes} minute(s)`)
+
+  setTimeout(async () => {
+    try {
+      await sock.groupSettingUpdate(jid, "not_announcement")
+      reply("🔓 Group auto-opened again")
+    } catch (e) {
+      console.log("TEMP OPEN ERROR:", e)
+    }
+  }, minutes * 60000)
 },
+
+// ===== SET OPEN TIME =====
+setopen: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const time = args[0]
+
+  // Format HH:MM (24hr)
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return reply("❌ Usage: .setopen 06:00")
+  }
+
+  await react("🌅")
+
+  if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
+
+  GROUP_SCHEDULES[jid].open = time
+  GROUP_SCHEDULES[jid].enabled = true
+
+  saveGroupSchedules()
+
+  reply(
+`🌅 *GROUP AUTO-OPEN SET*
+
+🔓 Open Time: ${time}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== SET CLOSE TIME =====
+setclose: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const time = args[0]
+
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return reply("❌ Usage: .setclose 22:00")
+  }
+
+  await react("🌙")
+
+  if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
+
+  GROUP_SCHEDULES[jid].close = time
+  GROUP_SCHEDULES[jid].enabled = true
+
+  saveGroupSchedules()
+
+  reply(
+`🌙 *GROUP AUTO-CLOSE SET*
+
+🔒 Close Time: ${time}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== VIEW SCHEDULE =====
+schedule: async () => {
+  if (!isGroup) return reply("❌ Group only")
+
+  await react("📅")
+
+  const schedule = GROUP_SCHEDULES[jid]
+
+  if (!schedule || (!schedule.open && !schedule.close)) {
+    return reply("❌ No schedule set for this group")
+  }
+
+  reply(
+`📅 *GROUP SCHEDULE SETTINGS*
+
+🌅 Open: ${schedule.open || "Not set"}
+🌙 Close: ${schedule.close || "Not set"}
+
+⚙️ Status: ${schedule.enabled ? "✅ Active" : "❌ Disabled"}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== DISABLE SCHEDULE =====
+scheduleoff: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("⛔")
+
+  if (!GROUP_SCHEDULES[jid]) {
+    return reply("❌ No schedule found")
+  }
+
+  GROUP_SCHEDULES[jid].enabled = false
+  saveGroupSchedules()
+
+  reply("⛔ Group schedule disabled")
+},
+
+// ===== ENABLE SCHEDULE =====
+scheduleon: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("✅")
+
+  if (!GROUP_SCHEDULES[jid]) {
+    return reply("❌ No schedule found")
+  }
+
+  GROUP_SCHEDULES[jid].enabled = true
+  saveGroupSchedules()
+
+  reply("✅ Group schedule enabled")
+},
+
+// ===== DELETE SCHEDULE =====
+delschedule: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("🗑️")
+
+  delete GROUP_SCHEDULES[jid]
+  saveGroupSchedules()
+
+  reply("🗑️ Group schedule deleted")
+},
+
+
+// ==== GROUP MANAGEMENT =====
+setname: async () => {
+    if (!isGroup) return reply("❌ Group only")
+    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+    const newName = args.join(" ")
+    if (!newName) return reply("❌ Provide new group name")
+
+    try {
+      await sock.groupUpdateSubject(jid, newName)
+      reply("✏️ Group name updated successfully")
+    } catch (e) {
+      console.log("SETNAME ERROR:", e)
+      reply("❌ Failed to update group name")
+    }
+  },
+
+  setdesc: async () => {
+    if (!isGroup) return reply("❌ Group only")
+    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+    const newDesc = args.join(" ")
+    if (!newDesc) return reply("❌ Provide new description")
+
+    try {
+      await sock.groupUpdateDescription(jid, newDesc)
+      reply("📝 Group description updated successfully")
+    } catch (e) {
+      console.log("SETDESC ERROR:", e)
+      reply("❌ Failed to update group description")
+    }
+  },
 
 groupinfo: async () => {
   if (!isGroup) return reply("❌ Group only")
@@ -2180,32 +2594,29 @@ revoke: async () => {
   reply("🔄 Group link reset successful")
 },
 
+// ➕ ADD USER TO GROUP (no @mentions, just phone number)
 add: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  let number = args[0]?.replace(/\D/g, "") // removes +, spaces, etc.
+  if (!number) {
+    return reply("❌ Usage: .add 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format (080... → 23480...)
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const user = number + "@s.whatsapp.net"
 
   try {
-    await sock.groupParticipantsUpdate(jid, [target], "add")
-    return reply("✅ User added successfully")
+    await sock.groupParticipantsUpdate(jid, [user], "add")
+    reply(`✅ Added ${number} to the group`)
   } catch (e) {
-    console.log("Add failed, switching to invite fallback")
-
-    try {
-      const code = await sock.groupInviteCode(jid)
-      const link = "https://chat.whatsapp.com/" + code
-
-      await sock.sendMessage(target, {
-        text: `⚠️ Could not add you automatically.\n\nJoin manually:\n🔗 ${link}`
-      })
-
-      reply("⚠️ Could not add user → invite link sent")
-    } catch (err) {
-      console.log(err)
-      reply("❌ Failed to add or send invite")
-    }
+    console.log("Add error:", e)
+    reply(`❌ Failed to add ${number}`)
   }
 },
 
@@ -2213,21 +2624,30 @@ invite: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention a user")
+  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+  if (!number) {
+    return reply("❌ Usage: .invite 2348012345678")
+  }
+
+  // Auto-fix local Nigerian format (080... → 23480...)
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = number + "@s.whatsapp.net"
 
   try {
     const code = await sock.groupInviteCode(jid)
     const link = "https://chat.whatsapp.com/" + code
 
     await sock.sendMessage(target, {
-      text: `👋 You are invited to join a group:\n\n🔗 ${link}`
+      text: `👋 You are invited to join this group:\n\n🔗 ${link}`
     })
 
-    reply("✅ Invite sent in DM")
+    reply(`✅ Invite link sent to ${number}`)
   } catch (e) {
-    console.log(e)
-    reply("❌ Failed to generate invite link")
+    console.log("Invite error:", e)
+    reply(`❌ Failed to send invite to ${number}`)
   }
 },
 
@@ -2531,6 +2951,82 @@ ${e.message || "Unknown error"}`
     )
   }
 },
+
+// ===== PIN / UNPIN MESSAGE (GROUP + DM) =====
+pin: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+  if (!quoted?.stanzaId) {
+    return reply("❌ Reply to the message you want to pin")
+  }
+
+  try {
+    // 🔥 Works in both group & DM
+    await sock.chatModify(
+      {
+        pin: true,
+        lastMessages: [
+          {
+            key: {
+              remoteJid: jid,
+              fromMe: quoted.participant
+                ? normalizeJid(quoted.participant) === cleanSender
+                : false,
+              id: quoted.stanzaId,
+              participant: quoted.participant || undefined
+            },
+            messageTimestamp: quoted.expiration || Date.now()
+          }
+        ]
+      },
+      jid
+    )
+
+    reply("📌 Message pinned successfully")
+  } catch (e) {
+    console.log("PIN ERROR:", e)
+    reply("❌ Failed to pin message")
+  }
+},
+
+unpin: async () => {
+ if (!isOwner) return reply("❌ Owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+  if (!quoted?.stanzaId) {
+    return reply("❌ Reply to the pinned message you want to unpin")
+  }
+
+  try {
+    await sock.chatModify(
+      {
+        pin: false,
+        lastMessages: [
+          {
+            key: {
+              remoteJid: jid,
+              fromMe: quoted.participant
+                ? normalizeJid(quoted.participant) === cleanSender
+                : false,
+              id: quoted.stanzaId,
+              participant: quoted.participant || undefined
+            },
+            messageTimestamp: quoted.expiration || Date.now()
+          }
+        ]
+      },
+      jid
+    )
+
+    reply("📍 Message unpinned successfully")
+  } catch (e) {
+    console.log("UNPIN ERROR:", e)
+    reply("❌ Failed to unpin message")
+  }
+},
+
+
 
       // ===== MENU =====
       
