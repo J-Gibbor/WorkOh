@@ -1331,8 +1331,8 @@ memesticker: async () => {
         font-weight="bold"
         text-anchor="middle"
         dominant-baseline="middle"
-        stroke="black"
-        stroke-width="4"
+        stroke="white"
+        stroke-width="5"
         paint-order="stroke"
         fill="black">
         ${line}
@@ -1343,7 +1343,7 @@ memesticker: async () => {
   // ===== SVG CANVAS =====
   const svg = `
   <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100%" height="100%" fill="white"/>
+    <rect width="100%" height="100%" fill="black"/>
     ${textElements}
   </svg>`
 
