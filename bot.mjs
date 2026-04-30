@@ -78,7 +78,6 @@ let warns = {}
 // ================= WARN DATABASE =================
 const WARN_DB = global.WARN_DB || (global.WARN_DB = {})
 
-
 const WARN_LIMIT = 3
 
 const saveWarnDB = () => {
@@ -1652,9 +1651,9 @@ pack_send: async () => {
 },
 
      settings: async () => {
-  if (!isOwner) {
+  if (!isOwner)  {
     await react("❌")
-    return reply("❌ Admin or Bot owner only")
+    return reply("❌ Owner only")
   }
 
   reply(
@@ -1910,6 +1909,7 @@ delowner: async () => {
 
 // 📋 LIST OWNERS BY NUMBER ONLY
 owners: async () => {
+   if (!isOwner) return reply("❌ Owner only")
   if (!BOT_OWNERS.length) {
     return reply("❌ No owners found")
   }
@@ -2045,7 +2045,6 @@ unban: async () => {
   reply(`✅ User unbanned:\n@${target.split("@")[0]}`)
 },
 
-// =========== MUTE =========
 
 // ================= MUTE USER =================
 mute: async () => {
@@ -2058,6 +2057,8 @@ mute: async () => {
   if (!target) return reply("❌ Mention user")
 
   if (!MUTED_USERS[jid]) MUTED_USERS[jid] = []
+
+  let MUTED_USERS = MUTED_USERS || {}
 
   if (MUTED_USERS[jid].includes(target)) {
     return reply("❌ User already muted")
@@ -2381,6 +2382,7 @@ setopen: async () => {
 
   if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
 
+  let GROUP_SCHEDULES = GROUP_SCHEDULES || {}
   GROUP_SCHEDULES[jid].open = time
   GROUP_SCHEDULES[jid].enabled = true
 
