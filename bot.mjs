@@ -394,12 +394,13 @@ extractbackup: "📦 Extract backup archive contents",
 rollbackbot: "♻️ Restore latest backup version",
 updatebot: "🚀 Update bot from GitHub safely",
 
-  // 📦 STICKER PACK SYSTEM
+// 📦 STICKER PACK SYSTEM
 packcreate: "📦 Create a new sticker pack",
-packadd: "➕ Add sticker to pack",
-packview: "📖 View your sticker pack",
+packadd: "➕ Add image/video sticker to pack",
+packview: "👀 View stickers inside a pack",
+packlist: "📚 View all saved sticker packs",
 packdelete: "🗑️ Delete a sticker pack",
-packexport: "📤 Export pack as file"
+packsend: "🎲 Send random sticker from pack",
 }
 
 const groupCommands = (cmdObj) => {
@@ -455,7 +456,7 @@ const groupCommands = (cmdObj) => {
       groups["🛠️ BOT UPDATE"].push(line)
     }
 
-else if (["packcreate","packadd","packview","packdelete","packexport"].includes(cmd)) {
+else if (["packcreate","packadd","packview","packlist","packdelete","packsend"].includes(cmd)) {
   groups["📦 STICKER PACK SYSTEM"].push(`│ .${cmd} → ${cmdObj[cmd]}`)
 }
   }
