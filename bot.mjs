@@ -2062,8 +2062,24 @@ ${admins.map((a, i) => ` ${i + 1}. @${a.split("@")[0]}`).join("\n")}
 grouplink: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  const code = await sock.groupInviteCode(jid)
-  reply("🔗 https://chat.whatsapp.com/" + code)
+
+  try {
+    const code = await sock.groupInviteCode(jid)
+
+    if (!code || typeof code !== "string") {
+      return reply("❌ Failed to get invite link. Make sure bot is admin.")
+    }
+
+    const link = `https://chat.whatsapp.com/${code}`
+
+    await sock.sendMessage(jid, {
+      text: `🔗 *Group Invite Link*\n\n${link}`
+    })
+
+  } catch (e) {
+    console.log("grouplink error:", e)
+    reply("❌ Could not fetch group invite link (bot may not be admin)")
+  }
 },
 
 revoke: async () => {
