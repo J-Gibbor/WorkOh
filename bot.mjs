@@ -1205,29 +1205,24 @@ memesticker: async () => {
   const text = args.join(" ").trim()
   if (!text) return reply("❌ Provide text")
 
-  // 🔥 DELETE USER COMMAND ONLY AFTER 2s
+  // 🔥 DELETE USER COMMAND MESSAGE AFTER 2s
   setTimeout(async () => {
     try {
       await sock.sendMessage(jid, {
-        delete: {
-          remoteJid: jid,
-          fromMe: false,
-          id: msg.key.id,
-          participant: msg.key.participant || sender
-        }
+        delete: msg.key
       })
     } catch (e) {
       console.log("Command delete failed:", e)
     }
   }, 2000)
 
-  // ===== SAFE SVG ESCAPE =====
+  // ===== SAFE TEXT =====
   const safeText = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 
-  // ===== MULTILINE TEXT SUPPORT =====
+  // ===== MULTILINE WRAP =====
   const words = safeText.split(" ")
   const lines = []
   let line = ""
@@ -1243,14 +1238,30 @@ memesticker: async () => {
 
   if (line.trim()) lines.push(line.trim())
 
-  // ===== CENTER TEXT =====
+  // ===== CENTERED TEXT =====
+  const startY =
+    lines.length === 1
+      ? 256
+      : 180
+
   const textElements = lines
     .map((l, i) => {
-      const y = 180 + (i * 55)
-      return `<text x="256" y="${y}" font-size="42" font-family="Arial" font-weight="bold" text-anchor="middle" fill="black">${l}</text>`
+      const y = startY + i * 55
+      return `
+      <text
+        x="256"
+        y="${y}"
+        font-size="42"
+        font-family="Arial"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="black">
+        ${l}
+      </text>`
     })
     .join("")
 
+  // ===== USE GENERATED TEXT ELEMENTS =====
   const svg = `
   <svg width="512" height="512">
     <rect width="100%" height="100%" fill="white"/>
