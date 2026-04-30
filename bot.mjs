@@ -530,7 +530,7 @@ async function start(session) {
               try {
                 sock.sendPresenceUpdate("unavailable")
               } catch {}
-            }, 15000)
+            }, 2000)
           }
   
         if (connection === "close") {
@@ -853,6 +853,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   whoami: "🆔",
   stats: "📊",
   ping: "🏓",
+  menu: "📃",
 
   packcreate: "📦",
   packadd: "➕",
@@ -873,15 +874,31 @@ if (!isCommand) return
 const args = body.slice(1).trim().split(/ +/)
 const cmd = args.shift()?.toLowerCase() || ""
 
-// 👉 send reaction first
-if (COMMAND_REACTIONS[cmd]) {
-  await sock.sendMessage(jid, {
-    react: {
-      text: COMMAND_REACTIONS[cmd],
-      key: msg.key
-    }
-  })
+// ================= SAFE REACT =================
+
+const react = async (emoji) => {
+  try {
+    if (!emoji || !msg?.key) return
+
+    await sock.sendMessage(
+      jid,
+      {
+        react: {
+          text: emoji,
+          key: msg.key
+        }
+      }
+    )
+
+    // small delay helps WhatsApp register reaction first
+    await new Promise(res => setTimeout(res, 300))
+
+  } catch (err) {
+    console.log("❌ Reaction failed:", err)
+  }
 }
+
+
 
 // ================= MODES =================
 const botMode = settings?.mode || "public"
@@ -1848,27 +1865,6 @@ unban: async () => {
   reply(`✅ User unbanned:\n@${target.split("@")[0]}`)
 },
 
-      // ===== BOT MODE =====
-
-      mode: async () => {
-  if (!isOwner) return reply("❌ Owner only")
-
-  const current = settings.mode || "public"
-  const newMode = args[0]?.toLowerCase()
-
-  if (!newMode) {
-    return reply(`🤖 Current mode: ${current}\n\nUse:\n.mode public\n.mode private`)
-  }
-
-  if (newMode !== "public" && newMode !== "private") {
-    return reply("❌ Use: .mode public OR .mode private")
-  }
-
-  settings.mode = newMode
-  saveSettings()
-
-  reply(`✅ Bot mode changed to: *${newMode.toUpperCase()}*`)
-},
 
       // ===== TAG =====
      tageveryone: async () => {
@@ -2628,16 +2624,34 @@ return sock.sendMessage(from, {
 }
 }
     // ================= EXECUTION =================
-   if (commands[cmd]) {
+if (commands[cmd]) {
+  try {
+    BOT_STATS.commands++
 
-     try {
-       await COMMANDS[cmd](args, { sock, msg, jid, reply })
-       BOT_STATS.commands++
-      } catch (e) {
-        console.log(e)
-        reply("Error to execute command")
-      }
+    // ✅ REACT FIRST
+ 
+    const emoji = COMMAND_REACTIONS[cmd]
+     if (emoji) {
+      await react(emoji)
     }
+
+    // ⏳ small delay ensures reaction shows first (important on WhatsApp)
+    await new Promise(r => setTimeout(r, 200))
+
+   // ✅ RUN COMMAND
+    await commands[cmd]()
+
+  } catch (e) {
+    console.log(`❌ Command Error (${cmd}):`, e)
+
+    await react("❌")
+    return reply("❌ Command execution failed")
+  }
+
+} else {
+  await react("❓")
+  return reply("❌ Unknown command")
+}
   })
 
 return sock
