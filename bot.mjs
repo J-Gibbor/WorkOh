@@ -1,6 +1,7 @@
 import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  Browsers,
   downloadContentFromMessage
 } from "@whiskeysockets/baileys"
 
@@ -16,6 +17,7 @@ import os from "os"
 import moment from "moment-timezone"
 import ffmpegPath from "ffmpeg-static"
 import { exec } from "child_process"
+import https from "https"
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -67,32 +69,79 @@ let reconnecting = false
 
 // ================= CONFIG =================
 const PREFIX = "."
-const WARN_LIMIT = 3
 const BOT_STATS = {
   startTime: Date.now(),
   messages: 0,
   commands: 0
 }
 
+const GROUP_SCHEDULES = {}
+let warns = {} 
+// ================= WARN DATABASE =================
+const WARN_DB = global.WARN_DB || (global.WARN_DB = {})
 
-const BOT_VERSION = {
-  version: "2.0.0",
-  releaseDate: "2026-04-28",
-  owner: "GIBBORLEE",
-  changelog: [
-    "🧠 Smart menu system upgraded",
-    "🔐 Advanced mode control added",
-    "🌐 Live cyber banner system",
-    "⚡ Performance optimizations",
-    "🛡️ Stability improvements"
-  ]
+const WARN_LIMIT = 3
+
+const saveWarnDB = () => {
+  try {
+    fs.writeFileSync(
+      "./warn_db.json",
+      JSON.stringify(WARN_DB, null, 2)
+    )
+  } catch (e) {
+    console.log("WARN SAVE ERROR:", e)
+  }
 }
 
-// 🔥 LATEST VERSION (change this when you update bot)
-const LATEST_VERSION = "2.1.0"
+const loadWarnDB = () => {
+  try {
+    if (fs.existsSync("./warn_db.json")) {
+      Object.assign(
+        WARN_DB,
+        JSON.parse(fs.readFileSync("./warn_db.json"))
+      )
+    }
+  } catch (e) {
+    console.log("WARN LOAD ERROR:", e)
+  }
+}
 
-// 🧠 VERSION CHECKER
-const isOutdated = () => BOT_VERSION.version !== LATEST_VERSION
+loadWarnDB()
+
+const addWarn = async (sock, jid, user, reason) => {
+  if (!WARN_DB[jid]) WARN_DB[jid] = {}
+  if (!WARN_DB[jid][user]) WARN_DB[jid][user] = []
+
+  WARN_DB[jid][user].push({
+    reason,
+    time: Date.now()
+  })
+
+  const count = WARN_DB[jid][user].length
+
+  if (count >= WARN_LIMIT) {
+    try {
+      await sock.groupParticipantsUpdate(jid, [user], "remove")
+
+      delete WARN_DB[jid][user]
+
+      await sock.sendMessage(jid, {
+        text: `🚫 @${user.split("@")[0]} removed (${reason})`,
+        mentions: [user]
+      })
+    } catch (e) {
+      console.log("WARN REMOVE ERROR:", e)
+    }
+  } else {
+    await sock.sendMessage(jid, {
+      text: `⚠️ @${user.split("@")[0]} warning ${count}/${WARN_LIMIT}\nReason: ${reason}`,
+      mentions: [user]
+    })
+  }
+
+  saveWarnDB()
+}
+
 
 
 // ==== STICKER META ====
@@ -117,6 +166,8 @@ const createSticker = async (buffer) => {
     throw new Error("Unsupported image format")
   }
 }
+
+  // =====MENU COMMANDS ====
 
 const COMMANDS = {
   // 🛡️ PROTECTION
@@ -271,6 +322,7 @@ else if (["packcreate","packadd","packview","packlist","packdelete","packsend"].
   return groups
 }
 
+
 const menuHeaders = [
   "╭─❖ 🤖 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 𝐁𝐎𝐓 𝐌𝐄𝐍𝐔 ❖─╮",
   "╭─⚡ 𝐒𝐘𝐒𝐓𝐄𝐌 𝐎𝐍𝐋𝐈𝐍𝐄 • 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 ⚡─╮",
@@ -351,11 +403,17 @@ const getPermissions = ({ msg, sock, BOT_OWNERS, groupAdmins }) => {
     isAdmin
   }
 }
+
 // ================= FILES =================
 const GROUP_SETTINGS_FILE = "./group-settings.json"
 const STORE_FILE = "./msg-store.json"
 const OWNERS_FILE = "./owners.json"
 const SETTINGS_FILE = "./settings.json"
+
+// Optional save function
+const saveGroupSchedules = () => {
+  fs.writeFileSync("./group_schedules.json", JSON.stringify(GROUP_SCHEDULES, null, 2))
+}
 
 let GROUP_SETTINGS = fs.existsSync(GROUP_SETTINGS_FILE) ? JSON.parse(fs.readFileSync(GROUP_SETTINGS_FILE)) : {}
 
@@ -368,6 +426,13 @@ let BOT_OWNERS = fs.existsSync(OWNERS_FILE) ? JSON.parse(fs.readFileSync(OWNERS_
 const saveGroupSettings = () => fs.writeFileSync(GROUP_SETTINGS_FILE, JSON.stringify(GROUP_SETTINGS, null, 2))
 
 const saveSettings = () => fs.writeFileSync(SETTINGS_FILE, JSON.stringify(SETTINGS, null, 2))
+
+let STICKER_PACKS = fs.existsSync("./stickerpacks.json")
+  ? JSON.parse(fs.readFileSync("./stickerpacks.json"))
+  : {}
+
+const saveStickerPacks = () =>
+  fs.writeFileSync("./stickerpacks.json", JSON.stringify(STICKER_PACKS, null, 2))
 
 // 🔥 FORCE GLOBAL DEFAULT MODE
 if (!SETTINGS["global"]) {
@@ -387,7 +452,8 @@ const saveOwners = () => fs.writeFileSync(OWNERS_FILE, JSON.stringify(BOT_OWNERS
 const getGroup_Settings = (jid) => {
   if (!GROUP_SETTINGS[jid]) {
     GROUP_SETTINGS[jid] = { 
-      antidelete: false, 
+      antidelete: false,
+      antibadword: false, 
       antilink: false,
       antistatus: false,
       antistatus_mention: false
@@ -422,7 +488,7 @@ async function start(session) {
       markOnlineOnConnect: false,
       emitOwnEvents: true,
       syncFullHistory: false,
-      browser: ["Chrome (Linux)", "Chrome", "120.0.0"],
+    browser: Browsers.windows("Microsoft Edgde"),
 
         // 🔥 stability boost
   connectTimeoutMs: 60000,
@@ -434,82 +500,88 @@ async function start(session) {
     sock.ev.on("creds.update", saveCreds)
 
     // ===== CONNECTION HANDLER =====
-    sock.ev.on("connection.update", async (u) => {
-      const { connection, qr, lastDisconnect } = u
+  sock.ev.on("connection.update", async (u) => {
+        const { connection, qr, lastDisconnect } = u
+  
+        if (qr) {
+          qrCount++
+    if (qrCount > 6) {
+      console.log("❌ Too many QR attempts, restarting clean session...")
+      process.exit(1)
+    }
+          CURRENT_QR = await QRCode.toDataURL(qr)
+          console.log("📱 QR READY")
+        }
+  
+        if (connection === "open") {
+          CURRENT_QR = ""
+          reconnecting = false
+  
+          console.log("✅ Bot connected")
+  
+         const botId = normalizeJid(sock.user.id)
 
-      if (qr) {
-        qrCount++
-  if (qrCount > 6) {
-    console.log("❌ Too many QR attempts, restarting clean session...")
-    process.exit(1)
-  }
-        CURRENT_QR = await QRCode.toDataURL(qr)
-        console.log("📱 QR READY")
-      }
-
-      if (connection === "open") {
-        CURRENT_QR = ""
-        reconnecting = false
-
-        console.log("✅ Bot connected")
-
-        const botId = normalizeJid(sock.user.id)
-const myNumber = ["2347044625110@s.whatsapp.net", "2349021540840@s.whatsapp.net"] // 👈 PUT YOUR NUMBER
-
+const myNumber = [
+  "2349021540840@s.whatsapp.net",
+  "2347044625110@s.whatsapp.net"
+]
+  
+  // merge safely
 const ids = [botId, myNumber]
 
-ids.forEach(id => {
-  const clean = normalizeJid(id)
-  if (!BOT_OWNERS.includes(clean)) {
-    BOT_OWNERS.push(clean)
+// clean + normalize + remove empties
+const cleaned = [...new Set(
+  ids
+    .map(normalizeJid)
+    .filter(Boolean)
+)]
+  
+ for (const id of cleaned) {
+  if (!BOT_OWNERS.includes(id)) {
+    BOT_OWNERS.push(id)
   }
-})
+}
 
 saveOwners()
-
-console.log("🤖 Logged in as:", botId)
-console.log("👑 Owners:", BOT_OWNERS)
-
-        // ✅ PREVENT MULTIPLE INTERVALS
-        
-          setInterval(() => {
-            try {
-              sock.sendPresenceUpdate("unavailable")
-            } catch {}
-          }, 15000)
-        }
-
-      if (connection === "close") {
-        
-         const statusCode = lastDisconnect?.error?.output?.statusCode
-
-    console.log("❌ Disconnected:", statusCode)
-
-    // ❌ Logged out (DO NOT reconnect)
-    if (statusCode === 401 || statusCode === 405) {
-      console.log("⚠️ Logged out → delete auth folder")
-      return
-    }
-
-      if (!reconnecting) {
-    reconnecting = true
-
-    setTimeout(() => {
-      reconnecting = false
-      start(session)
-    }, 5000)
-  }
-
-    // 🔄 Safe reconnect
-    console.log("🔄 Reconnecting safely in 5s...")
-    setTimeout(() => start(session), 5000)
+  
+  console.log("🤖 Logged in as:", botId)
+  console.log("👑 Owners:", BOT_OWNERS)
+  
+          // ✅ PREVENT MULTIPLE INTERVALS
+          
+            setInterval(() => {
+              try {
+                sock.sendPresenceUpdate("unavailable")
+              } catch {}
+            }, 150000)
+          }
+  
+        if (connection === "close") {
+          
+           const statusCode = lastDisconnect?.error?.output?.statusCode
+  
+      console.log("❌ Disconnected:", statusCode)
+  
+      // ❌ Logged out (DO NOT reconnect)
+      if (statusCode === 401 || statusCode === 405) {
+        console.log("⚠️ Logged out → delete auth folder")
+        return
       }
-    })
-
-  let warns = {}
-
-  const react = (jid, key, emoji) =>
-    sock.sendMessage(jid, { react: { text: emoji, key } })
+  
+        if (!reconnecting) {
+      reconnecting = true
+  
+      setTimeout(() => {
+        reconnecting = false
+        start(session)
+      }, 5000)
+    }
+  
+      // 🔄 Safe reconnect
+      console.log("🔄 Reconnecting safely in 5s...")
+      setTimeout(() => start(session), 5000)
+        }
+      })
 
 
  // ================= EVENTS =================
@@ -575,7 +647,7 @@ const reply = async (text) => {
   }
 }
 
-  const getTarget = () => {
+    const getTarget = () => {
   const context = msg.message?.extendedTextMessage?.contextInfo
 
   return (
@@ -586,7 +658,7 @@ const reply = async (text) => {
   )
 }
 
-   // ================= SAVE MESSAGE =================
+    // ================= SAVE MESSAGE =================
     // ===== LIGHTWEIGHT MESSAGE STORE (ANTI-MEMORY LEAK) =====
     const MAX_STORE = 5000
         // ===== SAFE STORE LIMIT =====
@@ -818,6 +890,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   packdelete: "🗑️",
   packsend: "🎲",
 }
+   
 
     // ================= COMMAND =================
  // ================= COMMAND HANDLER =================
@@ -1559,7 +1632,16 @@ pack_send: async () => {
         reply(`🔗 Anti-link ${group_settings.antilink ? "ON" : "OFF"}`)
       },
 
-       settings: async () => {
+      antibadword: async () => {
+  if (!isAdmin && !isOwner) return reply("❌ Admin only  or Bot owner only")
+
+  group_settings.antibadword = args[0] === "on"
+  saveGroupSettings()
+
+  reply(`🧼 Anti-badword ${group_settings.antibadword ? "ON" : "OFF"}`)
+},
+
+     settings: async () => {
   if (!isOwner)  {
     await react("❌")
     return reply("❌ Owner only")
@@ -1585,8 +1667,8 @@ pack_send: async () => {
 👑 Your Role: ${isOwner ? "Bot Owner" : isAdmin ? "Group Admin" : "Member"}`
   )
 },
-
-           // ======== WARNING ==========
+     
+      // ======== WARNING ==========
 
   // ================= WARN USER =================
 warn: async () => {
@@ -1821,39 +1903,55 @@ resetwarns: async () => {
   }
 },
 
-      // ===== OWNER =====
-      // ================= ADD OWNER =================
-  addowner: async () => {
-        if (!isOwner) return reply("❌ Owner only")
+    
+ // ================= ADD OWNER =================
+addowner: async () => {
+  if (!isOwner) return reply("❌ Owner only")
 
-          // supports mention, reply, or raw number
+  // supports mention, reply, or raw number
   let number =
     getTarget()?.split("@")[0] ||
     args[0]?.replace(/\D/g, "")
-    if (!number) {
+
+  if (!number) {
     return reply("❌ Usage: .addowner @user | reply | 2348012345678")
   }
-        // const target = getTarget()
-        // if (!target) return reply("Mention user")
 
-        const clean = normalizeJid(number + "@s.whatsapp.net")
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-        if (!clean) return reply("❌ Invalid number")
+  const clean = normalizeJid(number + "@s.whatsapp.net")
 
-        if (!BOT_OWNERS.includes(clean)) {
-          BOT_OWNERS.push(clean)
-          saveOwners()
-          reply("👑 Owner added successfully ✅")
-        } else {
-          reply("⚠️ already an owner")
-        }
-      },
+  if (!clean) return reply("❌ Invalid number")
 
-      // ================= REMOVE OWNER ================
-      delowner: async () => {
-        if (!isOwner) return reply("❌ Owner only")
+  // normalize owner list first
+  BOT_OWNERS = [...new Set(
+    BOT_OWNERS
+      .map(normalizeJid)
+      .filter(Boolean)
+  )]
 
-        // supports mention, reply, or raw number
+  if (BOT_OWNERS.includes(clean)) {
+    return reply(`⚠️ @${number} is already an owner`, {
+      mentions: [clean]
+    })
+  }
+
+  BOT_OWNERS.push(clean)
+  saveOwners()
+
+  reply(`👑 Owner added successfully:\n@${number}`, {
+    mentions: [clean]
+  })
+},
+
+// ================= REMOVE OWNER =================
+delowner: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  // supports mention, reply, or raw number
   let number =
     getTarget()?.split("@")[0] ||
     args[0]?.replace(/\D/g, "")
@@ -1862,18 +1960,16 @@ resetwarns: async () => {
     return reply("❌ Usage: .delowner @user | reply | 2348012345678")
   }
 
-        const clean = normalizeJid(number + "@s.whatsapp.net")
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-        if (!clean) return reply("❌ Invalid number")
+  const clean = normalizeJid(number + "@s.whatsapp.net")
 
-        BOT_OWNERS = BOT_OWNERS.filter(
-          (x) => normalizeJid(x) !== clean
-        )
+  if (!clean) return reply("❌ Invalid number")
 
-        saveOwners()
-        reply("👑 Owner removed successfully ❌")
-
-         // Prevent removing self/main bot owner
+  // Prevent removing self/main bot owner
   const protectedOwners = [
     normalizeJid(sock.user.id),
     "2347044625110@s.whatsapp.net",
@@ -1883,19 +1979,135 @@ resetwarns: async () => {
   if (protectedOwners.includes(clean)) {
     return reply("❌ Cannot remove protected main owner")
   }
+
+  BOT_OWNERS = [...new Set(
+    BOT_OWNERS
+      .map(normalizeJid)
+      .filter(Boolean)
+  )]
+
+  if (!BOT_OWNERS.includes(clean)) {
+    return reply(`⚠️ @${number} is not in owner list`, {
+      mentions: [clean]
+    })
+  }
+
+  BOT_OWNERS = BOT_OWNERS.filter(
+    x => normalizeJid(x) !== clean
+  )
+
+  saveOwners()
+
+  reply(`🗑️ Owner removed successfully:\n@${number}`, {
+    mentions: [clean]
+  })
 },
 
 // 📋 LIST OWNERS BY NUMBER ONLY
-      owners: async () => {
-         if (!isOwner) return reply("❌ Owner only")
-        reply(
-          "👑 Owners:\n" +
-            BOT_OWNERS.map((o) => "@" + o.split("@")[0]).join("\n")
-        )
-        
-      },
+owners: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+ reply(
+    "👑 Owners:\n" +
+    BOT_OWNERS.map((o, i) => `${i + 1}. ${o.split("@")[0]}`).join("\n")
+  )
+   if (!BOT_OWNERS.length) {
+    return reply("❌ No owners found")
+   }
+},
 
- // ================= BAN USER =================
+   restart: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  await reply("🔄 Restarting bot safely...")
+
+  try {
+    // optional: log restart event or save state
+    console.log("🔄 Bot restart requested by owner")
+
+    // small delay to ensure message is sent
+    setTimeout(() => {
+      // clean exit so Render restarts container properly
+      process.exit(0)
+    }, 1500)
+
+  } catch (e) {
+    console.log("Restart error:", e)
+    reply("❌ Restart failed")
+  }
+},
+
+restart_force: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  await reply("🔄 Restarting bot safely...")
+
+  setTimeout(() => {
+    // intentional crash → Render auto-redeploys container
+    throw new Error("BOT_RESTART_TRIGGER")
+  }, 1500)
+},
+
+shutdown: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  try {
+    await reply("⛔ Shutting down bot safely...")
+
+    console.log("⛔ Shutdown triggered by owner")
+
+    // small delay to ensure message delivery
+    setTimeout(() => {
+      // clean exit signal for Render
+      process.exit(0)
+    }, 1500)
+
+  } catch (e) {
+    console.log("Shutdown error:", e)
+    process.exit(1)
+  }
+},
+
+shutdown_force: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  await reply("⛔ Bot shutting down...")
+
+  setTimeout(() => {
+    throw new Error("BOT_SHUTDOWN_TRIGGER")
+  }, 1500)
+},
+
+broadcast: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  const message = args.join(" ")
+  if (!message) return reply("❌ Provide message")
+
+  try {
+    const allChats = Object.keys(sock.store?.chats || MSG_STORE)
+
+    let success = 0
+
+    for (const chat of allChats) {
+      try {
+        await sock.sendMessage(chat, {
+          text: `📢 OWNER BROADCAST\n\n${message}`
+        })
+
+        success++
+
+        await new Promise(r => setTimeout(r, 800))
+      } catch {}
+    }
+
+    reply(`✅ Broadcast sent to ${success} chats`)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Broadcast failed")
+  }
+},
+
+// ================= BAN USER =================
 ban: async () => {
    if (!isGroup) return reply("❌ Group only")
   if (!isOwner) return reply("❌ Owner only")
@@ -1974,7 +2186,6 @@ unban: async () => {
     })
   }
 
-  
   SETTINGS.banned = SETTINGS.banned.filter(
     u => normalizeJid(u) !== target
   )
@@ -1985,6 +2196,7 @@ unban: async () => {
     mentions: [target]
   })
 },
+
 
 // ================= MUTE USER =================
 mute: async () => {
@@ -2080,6 +2292,7 @@ clearlinks: async () => {
 
   reply("🧹 Anti-link reinforced. New links will be auto-deleted.")
 },
+
 
 
       // ===== TAG =====
@@ -2202,8 +2415,7 @@ tagonline: async () => {
     reply("❌ Failed to fetch active users")
   }
 },
-    
- hidetag: async () => {
+    hidetag: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
@@ -2244,881 +2456,884 @@ tagonline: async () => {
 },
 
       lock: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  try {
+    await sock.groupSettingUpdate(jid, "announcement")
+    reply("🔒 Group locked (admins only)")
+  } catch {
+    reply("❌ Failed to lock group")
+  }
+},
+
+unlock: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  try {
+    await sock.groupSettingUpdate(jid, "not_announcement")
+    reply("🔓 Group unlocked (everyone can chat)")
+  } catch {
+    reply("❌ Failed to unlock group")
+  }
+},
+
+// ================= GROUP OPEN TEMP =================
+opentemp: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const minutes = parseInt(args[0])
+  if (!minutes || minutes < 1) {
+    return reply("❌ Usage: .opentemp <minutes>")
+  }
+
+  await react("🔓")
+
+  await sock.groupSettingUpdate(jid, "not_announcement")
+
+  reply(`🔓 Group opened for ${minutes} minute(s)`)
+
+  setTimeout(async () => {
     try {
       await sock.groupSettingUpdate(jid, "announcement")
-      reply("🔒 Group locked (admins only)")
-    } catch {
-      reply("❌ Failed to lock group")
+      reply("🔒 Group auto-locked again")
+    } catch (e) {
+      console.log("TEMP LOCK ERROR:", e)
     }
-  },
-  
-  unlock: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
+  }, minutes * 60000)
+},
+
+// ================= GROUP CLOSE TEMP =================
+closetemp: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const minutes = parseInt(args[0])
+  if (!minutes || minutes < 1) {
+    return reply("❌ Usage: .closetemp <minutes>")
+  }
+
+  await react("🔒")
+
+  await sock.groupSettingUpdate(jid, "announcement")
+
+  reply(`🔒 Group locked for ${minutes} minute(s)`)
+
+  setTimeout(async () => {
     try {
       await sock.groupSettingUpdate(jid, "not_announcement")
-      reply("🔓 Group unlocked (everyone can chat)")
-    } catch {
-      reply("❌ Failed to unlock group")
-    }
-  },
-  
-  // ================= GROUP OPEN TEMP =================
-  opentemp: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const minutes = parseInt(args[0])
-    if (!minutes || minutes < 1) {
-      return reply("❌ Usage: .opentemp <minutes>")
-    }
-  
-    await react("🔓")
-  
-    await sock.groupSettingUpdate(jid, "not_announcement")
-  
-    reply(`🔓 Group opened for ${minutes} minute(s)`)
-  
-    setTimeout(async () => {
-      try {
-        await sock.groupSettingUpdate(jid, "announcement")
-        reply("🔒 Group auto-locked again")
-      } catch (e) {
-        console.log("TEMP LOCK ERROR:", e)
-      }
-    }, minutes * 60000)
-  },
-  
-  // ================= GROUP CLOSE TEMP =================
-  closetemp: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const minutes = parseInt(args[0])
-    if (!minutes || minutes < 1) {
-      return reply("❌ Usage: .closetemp <minutes>")
-    }
-  
-    await react("🔒")
-  
-    await sock.groupSettingUpdate(jid, "announcement")
-  
-    reply(`🔒 Group locked for ${minutes} minute(s)`)
-  
-    setTimeout(async () => {
-      try {
-        await sock.groupSettingUpdate(jid, "not_announcement")
-        reply("🔓 Group auto-opened again")
-      } catch (e) {
-        console.log("TEMP OPEN ERROR:", e)
-      }
-    }, minutes * 60000)
-  },
-  
-  // ===== SET OPEN TIME =====
-  setopen: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const time = args[0]
-  
-    // Format HH:MM (24hr)
-    if (!/^\d{2}:\d{2}$/.test(time)) {
-      return reply("❌ Usage: .setopen 06:00")
-    }
-  
-    await react("🌅")
-  
-    if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
-  
-    GROUP_SCHEDULES[jid].open = time
-    GROUP_SCHEDULES[jid].enabled = true
-  
-    saveGroupSchedules()
-  
-    reply(
-  `🌅 *GROUP AUTO-OPEN SET*
-  
-  🔓 Open Time: ${time}
-  🕒 Timezone: Africa/Lagos`
-    )
-  },
-  
-  // ===== SET CLOSE TIME =====
-  setclose: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const time = args[0]
-  
-    if (!/^\d{2}:\d{2}$/.test(time)) {
-      return reply("❌ Usage: .setclose 22:00")
-    }
-  
-    await react("🌑")
-  
-    if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
-  
-    GROUP_SCHEDULES[jid].close = time
-    GROUP_SCHEDULES[jid].enabled = true
-  
-    saveGroupSchedules()
-  
-    reply(
-  `🌙 *GROUP AUTO-CLOSE SET*
-  
-  🔒 Close Time: ${time}
-  🕒 Timezone: Africa/Lagos`
-    )
-  },
-  
-  // ===== VIEW SCHEDULE =====
-  schedule: async () => {
-    if (!isGroup) return reply("❌ Group only")
-  
-    await react("📅")
-  
-    const schedule = GROUP_SCHEDULES[jid]
-  
-    if (!schedule || (!schedule.open && !schedule.close)) {
-      return reply("❌ No schedule set for this group")
-    }
-  
-    reply(
-  `📅 *GROUP SCHEDULE SETTINGS*
-  
-  🌅 Open: ${schedule.open || "Not set"}
-  🌙 Close: ${schedule.close || "Not set"}
-  
-  ⚙️ Status: ${schedule.enabled ? "✅ Active" : "❌ Disabled"}
-  🕒 Timezone: Africa/Lagos`
-    )
-  },
-  
-  // ===== DISABLE SCHEDULE =====
-  scheduleoff: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    await react("⛔")
-  
-    if (!GROUP_SCHEDULES[jid]) {
-      return reply("❌ No schedule found")
-    }
-  
-    GROUP_SCHEDULES[jid].enabled = false
-    saveGroupSchedules()
-  
-    reply("⛔ Group schedule disabled")
-  },
-  
-  // ===== ENABLE SCHEDULE =====
-  scheduleon: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    await react("✅")
-  
-    if (!GROUP_SCHEDULES[jid]) {
-      return reply("❌ No schedule found")
-    }
-  
-    GROUP_SCHEDULES[jid].enabled = true
-    saveGroupSchedules()
-  
-    reply("✅ Group schedule enabled")
-  },
-  
-  // ===== DELETE SCHEDULE =====
-  delschedule: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    await react("🗑️")
-  
-    delete GROUP_SCHEDULES[jid]
-    saveGroupSchedules()
-  
-    reply("🗑️ Group schedule deleted")
-  },
-  
-  
-  // ==== GROUP MANAGEMENT =====
-  setname: async () => {
-      if (!isGroup) return reply("❌ Group only")
-      if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-      const newName = args.join(" ")
-      if (!newName) return reply("❌ Provide new group name")
-  
-      try {
-        await sock.groupUpdateSubject(jid, newName)
-        reply("✏️ Group name updated successfully")
-      } catch (e) {
-        console.log("SETNAME ERROR:", e)
-        reply("❌ Failed to update group name")
-      }
-    },
-  
-    setdesc: async () => {
-      if (!isGroup) return reply("❌ Group only")
-      if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-      const newDesc = args.join(" ")
-      if (!newDesc) return reply("❌ Provide new description")
-  
-      try {
-        await sock.groupUpdateDescription(jid, newDesc)
-        reply("📝 Group description updated successfully")
-      } catch (e) {
-        console.log("SETDESC ERROR:", e)
-        reply("❌ Failed to update group description")
-      }
-    },
-  
-  groupinfo: async () => {
-    if (!isGroup) return reply("❌ Group only")
-      if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    try {
-      const meta = await sock.groupMetadata(jid)
-  
-      const admins = meta.participants
-        .filter(p => p.admin)
-        .map(p => p.id)
-  
-      const owner = meta.owner || "Unknown"
-  
-      const text =
-  `📛 ${meta.subject}
-  
-  👥 Members: ${meta.participants.length}
-  👑 Owner: @${owner.split("@")[0]}
-  🛡️ Admins: ${admins.length}
-  
-  📝 Description:
-  ${meta.desc || "None"}
-  
-  👑 Admin List:
-  ${admins.map((a, i) => ` ${i + 1}. @${a.split("@")[0]}`).join("\n")}
-  `
-  
-      await sock.sendMessage(jid, {
-        text,
-        mentions: [owner, ...admins].filter(Boolean)
-      })
-  
+      reply("🔓 Group auto-opened again")
     } catch (e) {
-      console.log(e)
-      reply("❌ Failed to fetch group info")
+      console.log("TEMP OPEN ERROR:", e)
     }
-  },
-  
-  grouplink: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    try {
-      const code = await sock.groupInviteCode(jid)
-  
-      if (!code || typeof code !== "string") {
-        return reply("❌ Failed to get invite link. Make sure bot is admin.")
-      }
-  
-      const link = `https://chat.whatsapp.com/${code}`
-  
-      await sock.sendMessage(jid, {
-        text: `🔗 *Group Invite Link*\n\n${link}`
-      })
-  
-    } catch (e) {
-      console.log("grouplink error:", e)
-      reply("❌ Could not fetch group invite link (bot may not be admin)")
-    }
-  },
-  
-  revoke: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-    await sock.groupRevokeInvite(jid)
-    reply("🔄 Group link reset successful")
-  },
-  
-  // ================= ADD USER =================
-  add: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    // supports mention, reply, or raw number
-    let number =
-      getTarget()?.split("@")[0] ||
-      args[0]?.replace(/\D/g, "")
-  
-    if (!number) {
-      return reply("❌ Usage: .add @user | reply | 2348012345678")
-    }
-  
-    // Auto-fix Nigerian local format (080... → 23480...)
-    if (number.startsWith("0")) {
-      number = "234" + number.slice(1)
-    }
-  
-    const user = normalizeJid(number + "@s.whatsapp.net")
-  
-    if (!user) return reply("❌ Invalid number")
-  
-    try {
-      await sock.groupParticipantsUpdate(jid, [user], "add")
-  
-      reply(`✅ Added @${number} to the group`, {
-        mentions: [user]
-      })
-    } catch (e) {
-      console.log("Add error:", e)
-  
-      reply(`❌ Failed to add @${number}`, {
-        mentions: [user]
-      })
-    }
-  },
-  
-  // ================= INVITE USER =================
-  invite: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    // supports mention, reply, or raw number
-    let number =
-      getTarget()?.split("@")[0] ||
-      args[0]?.replace(/\D/g, "")
-  
-    if (!number) {
-      return reply("❌ Usage: .invite @user | reply | 2348012345678")
-    }
-  
-    // Auto-fix Nigerian local format (080... → 23480...)
-    if (number.startsWith("0")) {
-      number = "234" + number.slice(1)
-    }
-  
-    const target = normalizeJid(number + "@s.whatsapp.net")
-  
-    if (!target) return reply("❌ Invalid number")
-  
-    try {
-      const code = await sock.groupInviteCode(jid)
-      const link = "https://chat.whatsapp.com/" + code
-  
-      await sock.sendMessage(target, {
-        text: `👋 You are invited to join this group:\n\n🔗 ${link}`
-      })
-  
-      reply(`✅ Invite link sent to @${number}`, {
-        mentions: [target]
-      })
-    } catch (e) {
-      console.log("Invite error:", e)
-  
-      reply(`❌ Failed to send invite to @${number}`, {
-        mentions: [target]
-      })
-    }
-  },
-  
-  // ================= KICK USER =================
-  kick: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isOwner && !isAdmin) return reply("❌ Admin or Bot owner only")
-  
-    // supports mention, reply, or raw number
-    let number =
-      getTarget()?.split("@")[0] ||
-      args[0]?.replace(/\D/g, "")
-  
-    if (!number) {
-      return reply("❌ Usage: .kick @user | reply | 2348012345678")
-    }
-  
-    // Auto-fix Nigerian local format
-    if (number.startsWith("0")) {
-      number = "234" + number.slice(1)
-    }
-  
-    const target = normalizeJid(number + "@s.whatsapp.net")
-  
-    if (!target) return reply("❌ Invalid user")
-  
-    try {
-      await sock.groupParticipantsUpdate(jid, [target], "remove")
-  
-      reply(`👢 Removed @${number} from group`, {
-        mentions: [target]
-      })
-    } catch (e) {
-      console.log("Kick error:", e)
-  
-      reply(`❌ Failed to remove @${number}`, {
-        mentions: [target]
-      })
-    }
-  },
-  
-  // ================= PROMOTE USER =================
-  promote: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    // supports mention, reply, or raw number
-    let number =
-      getTarget()?.split("@")[0] ||
-      args[0]?.replace(/\D/g, "")
-  
-    if (!number) {
-      return reply("❌ Usage: .promote @user | reply | 2348012345678")
-    }
-  
-    // Auto-fix Nigerian local format
-    if (number.startsWith("0")) {
-      number = "234" + number.slice(1)
-    }
-  
-    const target = normalizeJid(number + "@s.whatsapp.net")
-  
-    if (!target) return reply("❌ Invalid user")
-  
-    try {
-      await sock.groupParticipantsUpdate(jid, [target], "promote")
-  
-      reply(`👮 @${number} is now an admin`, {
-        mentions: [target]
-      })
-    } catch (e) {
-      console.log("Promote error:", e)
-  
-      reply(`❌ Failed to promote @${number}`, {
-        mentions: [target]
-      })
-    }
-  },
-  
-  // ================= DEMOTE USER =================
-  demote: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    // supports mention, reply, or raw number
-    let number =
-      getTarget()?.split("@")[0] ||
-      args[0]?.replace(/\D/g, "")
-  
-    if (!number) {
-      return reply("❌ Usage: .demote @user | reply | 2348012345678")
-    }
-  
-    // Auto-fix Nigerian local format
-    if (number.startsWith("0")) {
-      number = "234" + number.slice(1)
-    }
-  
-    const target = normalizeJid(number + "@s.whatsapp.net")
-  
-    if (!target) return reply("❌ Invalid user")
-  
-    try {
-      await sock.groupParticipantsUpdate(jid, [target], "demote")
-  
-      reply(`⬇️ @${number} removed as admin`, {
-        mentions: [target]
-      })
-    } catch (e) {
-      console.log("Demote error:", e)
-  
-      reply(`❌ Failed to demote @${number}`, {
-        mentions: [target]
-      })
-    }
-  },
-  
-  approve: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-    const target = normalizeJid(getTarget())
-    if (!target) return reply("Mention user")
-  
-    try {
-      await sock.groupRequestParticipantsUpdate(jid, [target], "approve")
-      reply("✅ Request approved")
-    } catch {
-      reply("❌ Failed (ensure join approval is ON)")
-    }
-  },
-  
-  approveall: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    try {
-      const requests = await sock.groupRequestParticipantsList(jid)
-  
-      if (!requests || requests.length === 0) {
-        return reply("❌ No pending join requests")
-      }
-  
-      const users = requests.map(u => u.jid)
-  
-      await sock.groupRequestParticipantsUpdate(jid, users, "approve")
-  
-      reply(`✅ Approved ${users.length} join request(s)`)
-    } catch (e) {
-      console.log(e)
-      reply("❌ Failed to approve requests (maybe join approval is OFF)")
-    }
-  },
-  
-  reject: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-    const target = normalizeJid(getTarget())
-    if (!target) return reply("Mention user")
-  
-    try {
-      await sock.groupRequestParticipantsUpdate(jid, [target], "reject")
-      reply("❌ Request rejected")
-    } catch {
-      reply("❌ Failed (ensure join approval is ON)")
-    }
-  },
-  
-  // ================= ANTI STATUS =================
-  antistatus: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    group_settings.antistatus = args[0] === "on"
-    saveGroupSettings()
-  
-    reply(`🚫 Anti-status ${group_settings.antistatus ? "ON" : "OFF"}`)
-  },
-  
-  antistatusmention: async () => {
-    if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    group_settings.antistatus_mention = args[0] === "on"
-    saveGroupSettings()
-  
-    reply(`📢 Anti-status mention ${group_settings.antistatus_mention ? "ON" : "OFF"}`)
-  },
-  
-  delete: async () => {
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const quoted = msg.message?.extendedTextMessage?.contextInfo
-  
-    if (!quoted) return reply("❌ Reply to a message to delete")
-  
-    const key = {
-      remoteJid: jid,
-      fromMe: false,
-      id: quoted.stanzaId,
-      participant: quoted.participant
-    }
-  
-    try {
-      await sock.sendMessage(jid, { delete: key })
-      reply("🗑️ Message deleted")
-    } catch (e) {
-      console.log(e)
-      reply("❌ Failed to delete message")
-    }
-  },
-  
-  del: async () => {
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  
-    const quoted = msg.message?.extendedTextMessage?.contextInfo
-  
-    if (!quoted) return reply("Reply to message")
-  
-    try {
-      await sock.sendMessage(jid, {
-        delete: {
-          remoteJid: jid,
-          fromMe: false,
-          id: quoted.stanzaId,
-          participant: quoted.participant
-        }
-      })
-    } catch (e) {
-      console.log(e)
-      reply("❌ Cannot delete (WhatsApp limitation)")
-    }
-  },
-  
-  alive: async () => {
-    if (!isOwner) return reply("❌ Owner only")
-  
-    const uptime = Date.now() - BOT_STATS.startTime
-    const seconds = Math.floor(uptime / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-  
-    reply(`
-  🤖 GIBBORLEE BOT STATS
-  
-  ⏱️ Uptime: ${hours}h ${minutes % 60}m ${seconds % 60}s
-  💬 Messages: ${BOT_STATS.messages}
-  ⚡ Commands used: ${BOT_STATS.commands}
-  
-  📊 Status: ACTIVE
-  `)
-  },
-  
-  mode: async () => {
-    if (!isOwner) return reply("❌ Owner only")
-  
-    const current = settings.mode || "public"
-    const newMode = args[0]?.toLowerCase()
-  
-    if (!newMode) {
-      return reply(
-  `🔐 𝐁𝐎𝐓 𝐌𝐎𝐃𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋
-  
-  🌍 *PUBLIC MODE*
-  ➤ Everyone can use the bot
-  ➤ Best for open groups & communities
-  
-  🔒 *PRIVATE MODE*
-  ➤ Only bot owner can use commands
-  ➤ Maximum security mode
-  
-  👥 *GROUP MODE*
-  ➤ Works only in group chats
-  ➤ Ignores all DMs
-  
-  💬 *DM MODE*
-  ➤ Works only in private chats
-  ➤ Ignores all groups
-  
-  ⚡ *AUTO MODE*
-  ➤ Smart switching system:
-     • Groups → Public access
-     • DMs → Owner-only access
-  
-  ━━━━━━━━━━━━━━━━━━━━
-  📊 Current Mode: *${current.toUpperCase()}*
-  
-  Usage:
-  .mode public
-  .mode private
-  .mode group
-  .mode dm
-  .mode auto`
-      )
-    }
-  
-    const valid = ["public", "private", "group", "dm", "auto"]
-  
-    if (!valid.includes(newMode)) {
-      return reply("❌ Invalid mode\nUse: public / private / group / dm / auto")
-    }
-  
-    settings.mode = newMode
-    saveSettings()
-  
-    reply(`✅ Bot mode changed to: *${newMode.toUpperCase()}*`)
-  },
-  
-  whoami: async () => {
-    reply(`👤 Your JID:\n${sender}`)
-  },
-  
-  ping: async () => {
-    if (!isOwner) return reply("❌ Owner only")
-    const start = Date.now()
-  
-    const sent = await sock.sendMessage(jid, {
-      text: "🏓 Pinging..."
-    })
-  
-    const end = Date.now()
-    const speed = end - start
-  
-    await sock.sendMessage(jid, {
-      text:
-  `🏓 *PONG!. I AM ACTIVE TO ASSIST YOU*
-  
-  ⚡ Speed: ${speed}ms
-  🤖 Status: Online
-  📡 Server: Active`
-    }, { quoted: msg })
-  },
-  
-  // ============= STATUS FETCH =============
-  getstatus: async () => {
-    if (!isOwner) return reply("❌ Owner only")
-    try {
-      const quoted =
-        msg.message?.extendedTextMessage?.contextInfo?.quotedMessage ||
-        msg.message?.imageMessage?.contextInfo?.quotedMessage ||
-        msg.message?.videoMessage?.contextInfo?.quotedMessage
-  
-      if (!quoted) {
-        return reply(
-          "❌ Reply to a WhatsApp status (image/video/text) with .getstatus"
-        )
-      }
-  
-      // ===== STATUS TEXT =====
-      if (quoted.conversation) {
-        return reply(`📥 STATUS TEXT:\n\n${quoted.conversation}`)
-      }
-  
-      if (quoted.extendedTextMessage?.text) {
-        return reply(`📥 STATUS TEXT:\n\n${quoted.extendedTextMessage.text}`)
-      }
-  
-      // ===== STATUS IMAGE =====
-      if (quoted.imageMessage) {
-        const stream = await downloadContentFromMessage(
-          quoted.imageMessage,
-          "image"
-        )
-  
-        let buffer = Buffer.from([])
-        for await (const chunk of stream) {
-          buffer = Buffer.concat([buffer, chunk])
-        }
-  
-        await sock.sendMessage(
-          jid,
-          {
-            image: buffer,
-            caption: quoted.imageMessage.caption || "📥 Extracted status image"
-          },
-          { quoted: msg }
-        )
-  
-        return
-      }
-  
-      // ===== STATUS VIDEO =====
-      if (quoted.videoMessage) {
-        const stream = await downloadContentFromMessage(
-          quoted.videoMessage,
-          "video"
-        )
-  
-        let buffer = Buffer.from([])
-        for await (const chunk of stream) {
-          buffer = Buffer.concat([buffer, chunk])
-        }
-  
-        await sock.sendMessage(
-          jid,
-          {
-            video: buffer,
-            caption: quoted.videoMessage.caption || "📥 Extracted status video"
-          },
-          { quoted: msg }
-        )
-  
-        return
-      }
-  
-      return reply("❌ Unsupported status type")
-  
-    } catch (e) {
-      console.log("GETSTATUS ERROR:", e)
-  
-      return reply(
-  `❌ Failed to extract status
-  
-  Reason:
-  ${e.message || "Unknown error"}`
-      )
-    }
-  },
-  
-  // ===== PIN / UNPIN MESSAGE (GROUP + DM) =====
-  pin: async () => {
-     if (!isOwner) return reply("❌ Owner only")
-  
-    const quoted = msg.message?.extendedTextMessage?.contextInfo
-    if (!quoted?.stanzaId) {
-      return reply("❌ Reply to the message you want to pin")
-    }
-  
-    try {
-      // 🔥 Works in both group & DM
-      await sock.chatModify(
-        {
-          pin: true,
-          lastMessages: [
-            {
-              key: {
-                remoteJid: jid,
-                fromMe: quoted.participant
-                  ? normalizeJid(quoted.participant) === cleanSender
-                  : false,
-                id: quoted.stanzaId,
-                participant: quoted.participant || undefined
-              },
-              messageTimestamp: quoted.expiration || Date.now()
-            }
-          ]
-        },
-        jid
-      )
-  
-      reply("📌 Message pinned successfully")
-    } catch (e) {
-      console.log("PIN ERROR:", e)
-      reply("❌ Failed to pin message")
-    }
-  },
-  
-  unpin: async () => {
-   if (!isOwner) return reply("❌ Owner only")
-  
-    const quoted = msg.message?.extendedTextMessage?.contextInfo
-    if (!quoted?.stanzaId) {
-      return reply("❌ Reply to the pinned message you want to unpin")
-    }
-  
-    try {
-      await sock.chatModify(
-        {
-          pin: false,
-          lastMessages: [
-            {
-              key: {
-                remoteJid: jid,
-                fromMe: quoted.participant
-                  ? normalizeJid(quoted.participant) === cleanSender
-                  : false,
-                id: quoted.stanzaId,
-                participant: quoted.participant || undefined
-              },
-              messageTimestamp: quoted.expiration || Date.now()
-            }
-          ]
-        },
-        jid
-      )
-  
-      reply("📍 Message unpinned successfully")
-    } catch (e) {
-      console.log("UNPIN ERROR:", e)
-      reply("❌ Failed to unpin message")
-    }
-  },
-  
+  }, minutes * 60000)
+},
 
+// ===== SET OPEN TIME =====
+setopen: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const time = args[0]
+
+  // Format HH:MM (24hr)
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return reply("❌ Usage: .setopen 06:00")
+  }
+
+  await react("🌅")
+
+  if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
+
+  GROUP_SCHEDULES[jid].open = time
+  GROUP_SCHEDULES[jid].enabled = true
+
+  saveGroupSchedules()
+
+  reply(
+`🌅 *GROUP AUTO-OPEN SET*
+
+🔓 Open Time: ${time}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== SET CLOSE TIME =====
+setclose: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const time = args[0]
+
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return reply("❌ Usage: .setclose 22:00")
+  }
+
+  await react("🌑")
+
+  if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
+
+  GROUP_SCHEDULES[jid].close = time
+  GROUP_SCHEDULES[jid].enabled = true
+
+  saveGroupSchedules()
+
+  reply(
+`🌙 *GROUP AUTO-CLOSE SET*
+
+🔒 Close Time: ${time}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== VIEW SCHEDULE =====
+schedule: async () => {
+  if (!isGroup) return reply("❌ Group only")
+
+  await react("📅")
+
+  const schedule = GROUP_SCHEDULES[jid]
+
+  if (!schedule || (!schedule.open && !schedule.close)) {
+    return reply("❌ No schedule set for this group")
+  }
+
+  reply(
+`📅 *GROUP SCHEDULE SETTINGS*
+
+🌅 Open: ${schedule.open || "Not set"}
+🌙 Close: ${schedule.close || "Not set"}
+
+⚙️ Status: ${schedule.enabled ? "✅ Active" : "❌ Disabled"}
+🕒 Timezone: Africa/Lagos`
+  )
+},
+
+// ===== DISABLE SCHEDULE =====
+scheduleoff: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("⛔")
+
+  if (!GROUP_SCHEDULES[jid]) {
+    return reply("❌ No schedule found")
+  }
+
+  GROUP_SCHEDULES[jid].enabled = false
+  saveGroupSchedules()
+
+  reply("⛔ Group schedule disabled")
+},
+
+// ===== ENABLE SCHEDULE =====
+scheduleon: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("✅")
+
+  if (!GROUP_SCHEDULES[jid]) {
+    return reply("❌ No schedule found")
+  }
+
+  GROUP_SCHEDULES[jid].enabled = true
+  saveGroupSchedules()
+
+  reply("✅ Group schedule enabled")
+},
+
+// ===== DELETE SCHEDULE =====
+delschedule: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  await react("🗑️")
+
+  delete GROUP_SCHEDULES[jid]
+  saveGroupSchedules()
+
+  reply("🗑️ Group schedule deleted")
+},
+
+
+// ==== GROUP MANAGEMENT =====
+setname: async () => {
+    if (!isGroup) return reply("❌ Group only")
+    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+    const newName = args.join(" ")
+    if (!newName) return reply("❌ Provide new group name")
+
+    try {
+      await sock.groupUpdateSubject(jid, newName)
+      reply("✏️ Group name updated successfully")
+    } catch (e) {
+      console.log("SETNAME ERROR:", e)
+      reply("❌ Failed to update group name")
+    }
+  },
+
+  setdesc: async () => {
+    if (!isGroup) return reply("❌ Group only")
+    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+    const newDesc = args.join(" ")
+    if (!newDesc) return reply("❌ Provide new description")
+
+    try {
+      await sock.groupUpdateDescription(jid, newDesc)
+      reply("📝 Group description updated successfully")
+    } catch (e) {
+      console.log("SETDESC ERROR:", e)
+      reply("❌ Failed to update group description")
+    }
+  },
+
+groupinfo: async () => {
+  if (!isGroup) return reply("❌ Group only")
+    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  try {
+    const meta = await sock.groupMetadata(jid)
+
+    const admins = meta.participants
+      .filter(p => p.admin)
+      .map(p => p.id)
+
+    const owner = meta.owner || "Unknown"
+
+    const text =
+`📛 ${meta.subject}
+
+👥 Members: ${meta.participants.length}
+👑 Owner: @${owner.split("@")[0]}
+🛡️ Admins: ${admins.length}
+
+📝 Description:
+${meta.desc || "None"}
+
+👑 Admin List:
+${admins.map((a, i) => ` ${i + 1}. @${a.split("@")[0]}`).join("\n")}
+`
+
+    await sock.sendMessage(jid, {
+      text,
+      mentions: [owner, ...admins].filter(Boolean)
+    })
+
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to fetch group info")
+  }
+},
+
+grouplink: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  try {
+    const code = await sock.groupInviteCode(jid)
+
+    if (!code || typeof code !== "string") {
+      return reply("❌ Failed to get invite link. Make sure bot is admin.")
+    }
+
+    const link = `https://chat.whatsapp.com/${code}`
+
+    await sock.sendMessage(jid, {
+      text: `🔗 *Group Invite Link*\n\n${link}`
+    })
+
+  } catch (e) {
+    console.log("grouplink error:", e)
+    reply("❌ Could not fetch group invite link (bot may not be admin)")
+  }
+},
+
+revoke: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  await sock.groupRevokeInvite(jid)
+  reply("🔄 Group link reset successful")
+},
+
+// ================= ADD USER =================
+add: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .add @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format (080... → 23480...)
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const user = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!user) return reply("❌ Invalid number")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [user], "add")
+
+    reply(`✅ Added @${number} to the group`, {
+      mentions: [user]
+    })
+  } catch (e) {
+    console.log("Add error:", e)
+
+    reply(`❌ Failed to add @${number}`, {
+      mentions: [user]
+    })
+  }
+},
+
+// ================= INVITE USER =================
+invite: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .invite @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format (080... → 23480...)
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid number")
+
+  try {
+    const code = await sock.groupInviteCode(jid)
+    const link = "https://chat.whatsapp.com/" + code
+
+    await sock.sendMessage(target, {
+      text: `👋 You are invited to join this group:\n\n🔗 ${link}`
+    })
+
+    reply(`✅ Invite link sent to @${number}`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Invite error:", e)
+
+    reply(`❌ Failed to send invite to @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= KICK USER =================
+kick: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner && !isAdmin) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .kick @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "remove")
+
+    reply(`👢 Removed @${number} from group`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Kick error:", e)
+
+    reply(`❌ Failed to remove @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= PROMOTE USER =================
+promote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .promote @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "promote")
+
+    reply(`👮 @${number} is now an admin`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Promote error:", e)
+
+    reply(`❌ Failed to promote @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= DEMOTE USER =================
+demote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .demote @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "demote")
+
+    reply(`⬇️ @${number} removed as admin`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Demote error:", e)
+
+    reply(`❌ Failed to demote @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+approve: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  const target = normalizeJid(getTarget())
+  if (!target) return reply("Mention user")
+
+  try {
+    await sock.groupRequestParticipantsUpdate(jid, [target], "approve")
+    reply("✅ Request approved")
+  } catch {
+    reply("❌ Failed (ensure join approval is ON)")
+  }
+},
+
+approveall: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  try {
+    const requests = await sock.groupRequestParticipantsList(jid)
+
+    if (!requests || requests.length === 0) {
+      return reply("❌ No pending join requests")
+    }
+
+    const users = requests.map(u => u.jid)
+
+    await sock.groupRequestParticipantsUpdate(jid, users, "approve")
+
+    reply(`✅ Approved ${users.length} join request(s)`)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to approve requests (maybe join approval is OFF)")
+  }
+},
+
+reject: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  const target = normalizeJid(getTarget())
+  if (!target) return reply("Mention user")
+
+  try {
+    await sock.groupRequestParticipantsUpdate(jid, [target], "reject")
+    reply("❌ Request rejected")
+  } catch {
+    reply("❌ Failed (ensure join approval is ON)")
+  }
+},
+
+// ================= ANTI STATUS =================
+antistatus: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  group_settings.antistatus = args[0] === "on"
+  saveGroupSettings()
+
+  reply(`🚫 Anti-status ${group_settings.antistatus ? "ON" : "OFF"}`)
+},
+
+antistatusmention: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  group_settings.antistatus_mention = args[0] === "on"
+  saveGroupSettings()
+
+  reply(`📢 Anti-status mention ${group_settings.antistatus_mention ? "ON" : "OFF"}`)
+},
+
+delete: async () => {
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+
+  if (!quoted) return reply("❌ Reply to a message to delete")
+
+  const key = {
+    remoteJid: jid,
+    fromMe: false,
+    id: quoted.stanzaId,
+    participant: quoted.participant
+  }
+
+  try {
+    await sock.sendMessage(jid, { delete: key })
+    reply("🗑️ Message deleted")
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to delete message")
+  }
+},
+
+del: async () => {
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+
+  if (!quoted) return reply("Reply to message")
+
+  try {
+    await sock.sendMessage(jid, {
+      delete: {
+        remoteJid: jid,
+        fromMe: false,
+        id: quoted.stanzaId,
+        participant: quoted.participant
+      }
+    })
+  } catch (e) {
+    console.log(e)
+    reply("❌ Cannot delete (WhatsApp limitation)")
+  }
+},
+
+alive: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  const uptime = Date.now() - BOT_STATS.startTime
+  const seconds = Math.floor(uptime / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  reply(`
+🤖 GIBBORLEE BOT STATS
+
+⏱️ Uptime: ${hours}h ${minutes % 60}m ${seconds % 60}s
+💬 Messages: ${BOT_STATS.messages}
+⚡ Commands used: ${BOT_STATS.commands}
+
+📊 Status: ACTIVE
+`)
+},
+
+mode: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  const current = settings.mode || "public"
+  const newMode = args[0]?.toLowerCase()
+
+  if (!newMode) {
+    return reply(
+`🔐 𝐁𝐎𝐓 𝐌𝐎𝐃𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋
+
+🌍 *PUBLIC MODE*
+➤ Everyone can use the bot
+➤ Best for open groups & communities
+
+🔒 *PRIVATE MODE*
+➤ Only bot owner can use commands
+➤ Maximum security mode
+
+👥 *GROUP MODE*
+➤ Works only in group chats
+➤ Ignores all DMs
+
+💬 *DM MODE*
+➤ Works only in private chats
+➤ Ignores all groups
+
+⚡ *AUTO MODE*
+➤ Smart switching system:
+   • Groups → Public access
+   • DMs → Owner-only access
+
+━━━━━━━━━━━━━━━━━━━━
+📊 Current Mode: *${current.toUpperCase()}*
+
+Usage:
+.mode public
+.mode private
+.mode group
+.mode dm
+.mode auto`
+    )
+  }
+
+  const valid = ["public", "private", "group", "dm", "auto"]
+
+  if (!valid.includes(newMode)) {
+    return reply("❌ Invalid mode\nUse: public / private / group / dm / auto")
+  }
+
+  settings.mode = newMode
+  saveSettings()
+
+  reply(`✅ Bot mode changed to: *${newMode.toUpperCase()}*`)
+},
+
+whoami: async () => {
+  reply(`👤 Your JID:\n${sender}`)
+},
+
+ping: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+  const start = Date.now()
+
+  const sent = await sock.sendMessage(jid, {
+    text: "🏓 Pinging..."
+  })
+
+  const end = Date.now()
+  const speed = end - start
+
+  await sock.sendMessage(jid, {
+    text:
+`🏓 *PONG!. I AM ACTIVE TO ASSIST YOU*
+
+⚡ Speed: ${speed}ms
+🤖 Status: Online
+📡 Server: Active`
+  }, { quoted: msg })
+},
+
+// ============= STATUS FETCH =============
+getstatus: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+  try {
+    const quoted =
+      msg.message?.extendedTextMessage?.contextInfo?.quotedMessage ||
+      msg.message?.imageMessage?.contextInfo?.quotedMessage ||
+      msg.message?.videoMessage?.contextInfo?.quotedMessage
+
+    if (!quoted) {
+      return reply(
+        "❌ Reply to a WhatsApp status (image/video/text) with .getstatus"
+      )
+    }
+
+    // ===== STATUS TEXT =====
+    if (quoted.conversation) {
+      return reply(`📥 STATUS TEXT:\n\n${quoted.conversation}`)
+    }
+
+    if (quoted.extendedTextMessage?.text) {
+      return reply(`📥 STATUS TEXT:\n\n${quoted.extendedTextMessage.text}`)
+    }
+
+    // ===== STATUS IMAGE =====
+    if (quoted.imageMessage) {
+      const stream = await downloadContentFromMessage(
+        quoted.imageMessage,
+        "image"
+      )
+
+      let buffer = Buffer.from([])
+      for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk])
+      }
+
+      await sock.sendMessage(
+        jid,
+        {
+          image: buffer,
+          caption: quoted.imageMessage.caption || "📥 Extracted status image"
+        },
+        { quoted: msg }
+      )
+
+      return
+    }
+
+    // ===== STATUS VIDEO =====
+    if (quoted.videoMessage) {
+      const stream = await downloadContentFromMessage(
+        quoted.videoMessage,
+        "video"
+      )
+
+      let buffer = Buffer.from([])
+      for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk])
+      }
+
+      await sock.sendMessage(
+        jid,
+        {
+          video: buffer,
+          caption: quoted.videoMessage.caption || "📥 Extracted status video"
+        },
+        { quoted: msg }
+      )
+
+      return
+    }
+
+    return reply("❌ Unsupported status type")
+
+  } catch (e) {
+    console.log("GETSTATUS ERROR:", e)
+
+    return reply(
+`❌ Failed to extract status
+
+Reason:
+${e.message || "Unknown error"}`
+    )
+  }
+},
+
+// ===== PIN / UNPIN MESSAGE (GROUP + DM) =====
+pin: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+  if (!quoted?.stanzaId) {
+    return reply("❌ Reply to the message you want to pin")
+  }
+
+  try {
+    // 🔥 Works in both group & DM
+    await sock.chatModify(
+      {
+        pin: true,
+        lastMessages: [
+          {
+            key: {
+              remoteJid: jid,
+              fromMe: quoted.participant
+                ? normalizeJid(quoted.participant) === cleanSender
+                : false,
+              id: quoted.stanzaId,
+              participant: quoted.participant || undefined
+            },
+            messageTimestamp: quoted.expiration || Date.now()
+          }
+        ]
+      },
+      jid
+    )
+
+    reply("📌 Message pinned successfully")
+  } catch (e) {
+    console.log("PIN ERROR:", e)
+    reply("❌ Failed to pin message")
+  }
+},
+
+unpin: async () => {
+ if (!isOwner) return reply("❌ Owner only")
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo
+  if (!quoted?.stanzaId) {
+    return reply("❌ Reply to the pinned message you want to unpin")
+  }
+
+  try {
+    await sock.chatModify(
+      {
+        pin: false,
+        lastMessages: [
+          {
+            key: {
+              remoteJid: jid,
+              fromMe: quoted.participant
+                ? normalizeJid(quoted.participant) === cleanSender
+                : false,
+              id: quoted.stanzaId,
+              participant: quoted.participant || undefined
+            },
+            messageTimestamp: quoted.expiration || Date.now()
+          }
+        ]
+      },
+      jid
+    )
+
+    reply("📍 Message unpinned successfully")
+  } catch (e) {
+    console.log("UNPIN ERROR:", e)
+    reply("❌ Failed to unpin message")
+  }
+},
+
+
+
+      // ===== MENU =====
+      
 menu: async () => {
   
 
@@ -3246,16 +3461,15 @@ ${cmds.join("\n")}
 ║   Your wish is my command 🤭   
 ╚════════════════════════════╝
 `
-
-  // 📤 SEND TEXT MENU (NO IMAGE)
-  return sock.sendMessage(from, {
-    text: text,
-    mentions: BOT_OWNERS
-  }, { quoted: msg })
+ // ===== SEND MENU WITH WORKING IMAGE =====
+return sock.sendMessage(from, {
+   image: { url: randomImage }, 
+   caption: text, 
+   mentions: BOT_OWNERS 
+  }, { quoted: msg }
+) 
 }
 }
-
-
     // ================= EXECUTION =================
 if (commands[cmd]) {
   try {
@@ -3298,7 +3512,6 @@ return sock
 
 }
 }
-
 
 // =================  SESSION =================
 ;["session1", "session2"].forEach(start)
