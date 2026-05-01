@@ -541,11 +541,12 @@ async function start(session) {
          const botId = normalizeJid(sock.user.id)
 
 const myNumber = [
+  "2349021540840@s.whatsapp.net",
   "2347044625110@s.whatsapp.net"
 ]
   
   // merge safely
-const ids = [botId, ...myNumber]
+const ids = [botId, myNumber]
 
 // clean + normalize + remove empties
 const cleaned = [...new Set(
@@ -571,7 +572,7 @@ saveOwners()
               try {
                 sock.sendPresenceUpdate("unavailable")
               } catch {}
-            }, 2000)
+            }, 150000)
           }
   
         if (connection === "close") {
