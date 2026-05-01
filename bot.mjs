@@ -74,6 +74,7 @@ const BOT_STATS = {
   commands: 0
 }
 
+const GROUP_SCHEDULES = {}
 let warns = {} 
 // ================= WARN DATABASE =================
 const WARN_DB = global.WARN_DB || (global.WARN_DB = {})
@@ -428,7 +429,6 @@ const STORE_FILE = "./msg-store.json"
 const OWNERS_FILE = "./owners.json"
 const SETTINGS_FILE = "./settings.json"
 
-
 // Optional save function
 const saveGroupSchedules = () => {
   fs.writeFileSync("./group_schedules.json", JSON.stringify(GROUP_SCHEDULES, null, 2))
@@ -538,21 +538,29 @@ async function start(session) {
   
           console.log("✅ Bot connected")
   
-          const botId = normalizeJid(sock.user.id)
-  const myNumber = [
-    "2347044625110@s.whatsapp.net",
-     "2349021540840@s.whatsapp.net"]
+         const botId = normalizeJid(sock.user.id)
+
+const myNumber = [
+  "2347044625110@s.whatsapp.net"
+]
   
-  const ids = [botId, myNumber]
+  // merge safely
+const ids = [botId, ...myNumber]
+
+// clean + normalize + remove empties
+const cleaned = [...new Set(
+  ids
+    .map(normalizeJid)
+    .filter(Boolean)
+)]
   
-  ids.forEach(id => {
-    const clean = normalizeJid(id)
-    if (!BOT_OWNERS.includes(clean)) {
-      BOT_OWNERS.push(clean)
-    }
-  })
-  
-  saveOwners()
+ for (const id of cleaned) {
+  if (!BOT_OWNERS.includes(id)) {
+    BOT_OWNERS.push(id)
+  }
+}
+
+saveOwners()
   
   console.log("🤖 Logged in as:", botId)
   console.log("👑 Owners:", BOT_OWNERS)
@@ -907,6 +915,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
 
 const isCommand = body.startsWith(PREFIX)
 if (!isCommand) return
+const GROUP_SCHEDULES = global.GROUP_SCHEDULES || (global.GROUP_SCHEDULES = {})
 
 // ===== PARSE =====
 const args = body.slice(1).trim().split(/ +/)
@@ -1332,7 +1341,7 @@ memesticker: async () => {
         text-anchor="middle"
         dominant-baseline="middle"
         stroke="white"
-        stroke-width="5"
+        stroke-width="3"
         paint-order="stroke"
         fill="black">
         ${line}
@@ -1343,7 +1352,7 @@ memesticker: async () => {
   // ===== SVG CANVAS =====
   const svg = `
   <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100%" height="100%" fill="black"/>
+    <rect width="100%" height="100%" fill="white"/>
     ${textElements}
   </svg>`
 
@@ -1676,46 +1685,54 @@ pack_send: async () => {
 👑 Your Role: ${isOwner ? "Bot Owner" : isAdmin ? "Group Admin" : "Member"}`
   )
 },
-      // ===== ADMIN =====
-      kick: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isOwner && !isAdmin) return reply("❌ Owner only")
-        const target = getTarget()
-        if (!target) return reply("Mention user")
-        await sock.groupParticipantsUpdate(jid, [target], "remove")
-      },
-
-      promote: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-        const target = getTarget()
-        await sock.groupParticipantsUpdate(jid, [target], "promote")
-        return reply(" Added as Admin 👮")
-      },
-
-      demote: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-        const target = getTarget()
-        await sock.groupParticipantsUpdate(jid, [target], "demote")
-        return reply(" Removed as Admin 👮")
-      },
-
+     
       // ======== WARNING ==========
 
-      warn: async () => {
+  // ================= WARN USER =================
+warn: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  const target = getTarget()
-  if (!target) return reply("❌ Mention user")
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
 
-  const reason = args.slice(1).join(" ") || "No reason provided"
+  if (!number) {
+    return reply("❌ Usage: .warn @user | reply | 2348012345678 reason")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  // reason parsing:
+  // mention/reply => args after command
+  // raw number => args after first number
+  const reason =
+    getTarget()
+      ? args.join(" ").trim()
+      : args.slice(1).join(" ").trim() ||
+        "No reason provided"
 
   if (!WARN_DB[jid]) WARN_DB[jid] = {}
-  if (!WARN_DB[jid][target]) WARN_DB[jid][target] = []
 
-  WARN_DB[jid][target].push({
+  // normalize existing user key
+  let userKey =
+    Object.keys(WARN_DB[jid]).find(
+      u => normalizeJid(u) === target
+    ) || target
+
+  if (!WARN_DB[jid][userKey]) {
+    WARN_DB[jid][userKey] = []
+  }
+
+  WARN_DB[jid][userKey].push({
     reason,
     by: sender,
     time: Date.now()
@@ -1723,24 +1740,43 @@ pack_send: async () => {
 
   saveWarnDB()
 
-  const count = WARN_DB[jid][target].length
+  const count = WARN_DB[jid][userKey].length
 
   await reply(
 `⚠️ *WARNING ISSUED*
 
-👤 User: @${target.split("@")[0]}
+👤 User: @${number}
 ⚠️ Warn: ${count}/3
-📝 Reason: ${reason}`
+📝 Reason: ${reason}`,
+    {
+      mentions: [target]
+    }
   )
 
-  // AUTO KICK SYSTEM
+  // ================= AUTO KICK SYSTEM =================
   if (count >= 3) {
-    await sock.groupParticipantsUpdate(jid, [target], "remove")
+    try {
+      await sock.groupParticipantsUpdate(jid, [target], "remove")
 
-    delete WARN_DB[jid][target]
-    saveWarnDB()
+      delete WARN_DB[jid][userKey]
+      saveWarnDB()
 
-    return reply("🚫 User removed after 3 warnings")
+      return reply(
+`🚫 @${number} removed after reaching 3 warnings`,
+        {
+          mentions: [target]
+        }
+      )
+    } catch (e) {
+      console.log("Warn auto-kick error:", e)
+
+      return reply(
+`⚠️ @${number} reached 3 warnings but removal failed`,
+        {
+          mentions: [target]
+        }
+      )
+    }
   }
 },
 
@@ -1773,20 +1809,52 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
   })
 },
 
+// ================= CLEAR USER WARNINGS =================
 unwarn: async () => {
   if (!isGroup) return reply("❌ Group only")
-if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  const target = getTarget()
-  if (!target) return reply("❌ Mention user")
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
 
-  if (!WARN_DB[jid] || !WARN_DB[jid][target])
-    return reply("❌ No warnings found")
+  if (!number) {
+    return reply("❌ Usage: .unwarn @user | reply | 2348012345678")
+  }
 
-  delete WARN_DB[jid][target]
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  if (!WARN_DB[jid]) WARN_DB[jid] = {}
+
+  // normalize warn keys safety
+  const existingUsers = Object.keys(WARN_DB[jid]).map(normalizeJid)
+
+  if (!existingUsers.includes(target)) {
+    return reply(`❌ No warnings found for @${number}`, {
+      mentions: [target]
+    })
+  }
+
+  // remove matching normalized key safely
+  for (const user of Object.keys(WARN_DB[jid])) {
+    if (normalizeJid(user) === target) {
+      delete WARN_DB[jid][user]
+    }
+  }
+
   saveWarnDB()
 
-  reply(`✅ Warnings cleared for @${target.split("@")[0]}`)
+  reply(`✅ Warnings cleared for @${number}`, {
+    mentions: [target]
+  })
 },
 
 warninfo: async () => {
@@ -1853,14 +1921,18 @@ resetwarns: async () => {
   }
 },
 
-      // ===== OWNER =====
-  // 👑 ADD OWNER BY NUMBER (no @mentions)
+    
+ // ================= ADD OWNER =================
 addowner: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
-  let number = args[0]?.replace(/\D/g, "")
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
   if (!number) {
-    return reply("❌ Usage: .addowner 2348012345678")
+    return reply("❌ Usage: .addowner @user | reply | 2348012345678")
   }
 
   // Auto-fix Nigerian local format
@@ -1868,24 +1940,42 @@ addowner: async () => {
     number = "234" + number.slice(1)
   }
 
-  const clean = number + "@s.whatsapp.net"
+  const clean = normalizeJid(number + "@s.whatsapp.net")
 
-  if (!BOT_OWNERS.includes(clean)) {
-    BOT_OWNERS.push(clean)
-    saveOwners()
-    reply(`👑 Owner added successfully: ${number}`)
-  } else {
-    reply(`⚠️ ${number} is already an owner`)
+  if (!clean) return reply("❌ Invalid number")
+
+  // normalize owner list first
+  BOT_OWNERS = [...new Set(
+    BOT_OWNERS
+      .map(normalizeJid)
+      .filter(Boolean)
+  )]
+
+  if (BOT_OWNERS.includes(clean)) {
+    return reply(`⚠️ @${number} is already an owner`, {
+      mentions: [clean]
+    })
   }
+
+  BOT_OWNERS.push(clean)
+  saveOwners()
+
+  reply(`👑 Owner added successfully:\n@${number}`, {
+    mentions: [clean]
+  })
 },
 
-// ❌ REMOVE OWNER BY NUMBER (no @mentions)
+// ================= REMOVE OWNER =================
 delowner: async () => {
   if (!isOwner) return reply("❌ Owner only")
 
-  let number = args[0]?.replace(/\D/g, "")
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
   if (!number) {
-    return reply("❌ Usage: .delowner 2348012345678")
+    return reply("❌ Usage: .delowner @user | reply | 2348012345678")
   }
 
   // Auto-fix Nigerian local format
@@ -1893,18 +1983,41 @@ delowner: async () => {
     number = "234" + number.slice(1)
   }
 
-  const clean = number + "@s.whatsapp.net"
+  const clean = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!clean) return reply("❌ Invalid number")
+
+  // Prevent removing self/main bot owner
+  const protectedOwners = [
+    normalizeJid(sock.user.id),
+    "2347044625110@s.whatsapp.net"
+  ]
+
+  if (protectedOwners.includes(clean)) {
+    return reply("❌ Cannot remove protected main owner")
+  }
+
+  BOT_OWNERS = [...new Set(
+    BOT_OWNERS
+      .map(normalizeJid)
+      .filter(Boolean)
+  )]
 
   if (!BOT_OWNERS.includes(clean)) {
-    return reply(`⚠️ ${number} is not in owner list`)
+    return reply(`⚠️ @${number} is not in owner list`, {
+      mentions: [clean]
+    })
   }
 
   BOT_OWNERS = BOT_OWNERS.filter(
-    (x) => normalizeJid(x) !== clean
+    x => normalizeJid(x) !== clean
   )
 
   saveOwners()
-  reply(`👑 Owner removed successfully: ${number}`)
+
+  reply(`🗑️ Owner removed successfully:\n@${number}`, {
+    mentions: [clean]
+  })
 },
 
 // 📋 LIST OWNERS BY NUMBER ONLY
@@ -2012,29 +2125,84 @@ broadcast: async () => {
   }
 },
 
+// ================= BAN USER =================
 ban: async () => {
+   if (!isGroup) return reply("❌ Group only")
   if (!isOwner) return reply("❌ Owner only")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
 
-  if (!SETTINGS.banned) SETTINGS.banned = []
-
-  if (!SETTINGS.banned.includes(target)) {
-    SETTINGS.banned.push(target)
-    saveSettings()
+  if (!number) {
+    return reply("❌ Usage: .ban @user | reply | 2348012345678")
   }
 
-  reply(`🚷 User banned:\n@${target.split("@")[0]}`)
-},
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-unban: async () => {
-  if (!isOwner) return reply("❌ Owner only")
+  const target = normalizeJid(number + "@s.whatsapp.net")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  if (!target) return reply("❌ Invalid user")
 
   if (!SETTINGS.banned) SETTINGS.banned = []
+
+  // normalize existing banned list
+  SETTINGS.banned = SETTINGS.banned
+    .map(normalizeJid)
+    .filter(Boolean)
+
+  if (SETTINGS.banned.includes(target)) {
+    return reply(`❌ @${number} is already banned`, {
+      mentions: [target]
+    })
+  }
+
+  SETTINGS.banned.push(target)
+  saveSettings()
+
+  reply(`🚷 User banned:\n@${number}`, {
+    mentions: [target]
+  })
+},
+
+// ================= UNBAN USER =================
+unban: async () => {
+   if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .unban @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  if (!SETTINGS.banned) SETTINGS.banned = []
+
+  const wasBanned = SETTINGS.banned
+    .map(normalizeJid)
+    .includes(target)
+
+  if (!wasBanned) {
+    return reply(`❌ @${number} is not banned`, {
+      mentions: [target]
+    })
+  }
 
   SETTINGS.banned = SETTINGS.banned.filter(
     u => normalizeJid(u) !== target
@@ -2042,10 +2210,13 @@ unban: async () => {
 
   saveSettings()
 
-  reply(`✅ User unbanned:\n@${target.split("@")[0]}`)
+  reply(`✅ User unbanned:\n@${number}`, {
+    mentions: [target]
+  })
 },
 
 
+// ================= MUTE USER =================
 // ================= MUTE USER =================
 mute: async () => {
   if (!isGroup) return reply("❌ Group only")
@@ -2053,12 +2224,18 @@ mute: async () => {
 
   await react("🔇")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  // supports mention, reply, or raw number
+  let target =
+    normalizeJid(getTarget()) ||
+    normalizeJid(args[0]?.replace(/\D/g, "") + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Mention, reply, or provide number")
+
+  // global store safety
+  global.MUTED_USERS = global.MUTED_USERS || {}
+  const MUTED_USERS = global.MUTED_USERS
 
   if (!MUTED_USERS[jid]) MUTED_USERS[jid] = []
-
-  let MUTED_USERS = MUTED_USERS || {}
 
   if (MUTED_USERS[jid].includes(target)) {
     return reply("❌ User already muted")
@@ -2078,8 +2255,15 @@ unmute: async () => {
 
   await react("🔊")
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  // supports mention, reply, or raw number
+  let target =
+    normalizeJid(getTarget()) ||
+    normalizeJid(args[0]?.replace(/\D/g, "") + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Mention, reply, or provide number")
+
+  global.MUTED_USERS = global.MUTED_USERS || {}
+  const MUTED_USERS = global.MUTED_USERS
 
   if (!MUTED_USERS[jid] || !MUTED_USERS[jid].includes(target)) {
     return reply("❌ User is not muted")
@@ -2382,7 +2566,6 @@ setopen: async () => {
 
   if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
 
-  let GROUP_SCHEDULES = GROUP_SCHEDULES || {}
   GROUP_SCHEDULES[jid].open = time
   GROUP_SCHEDULES[jid].enabled = true
 
@@ -2407,7 +2590,7 @@ setclose: async () => {
     return reply("❌ Usage: .setclose 22:00")
   }
 
-  await react("🌙")
+  await react("🌑")
 
   if (!GROUP_SCHEDULES[jid]) GROUP_SCHEDULES[jid] = {}
 
@@ -2596,14 +2779,18 @@ revoke: async () => {
   reply("🔄 Group link reset successful")
 },
 
-// ➕ ADD USER TO GROUP (no @mentions, just phone number)
+// ================= ADD USER =================
 add: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  let number = args[0]?.replace(/\D/g, "") // removes +, spaces, etc.
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
   if (!number) {
-    return reply("❌ Usage: .add 2348012345678")
+    return reply("❌ Usage: .add @user | reply | 2348012345678")
   }
 
   // Auto-fix Nigerian local format (080... → 23480...)
@@ -2611,32 +2798,47 @@ add: async () => {
     number = "234" + number.slice(1)
   }
 
-  const user = number + "@s.whatsapp.net"
+  const user = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!user) return reply("❌ Invalid number")
 
   try {
     await sock.groupParticipantsUpdate(jid, [user], "add")
-    reply(`✅ Added ${number} to the group`)
+
+    reply(`✅ Added @${number} to the group`, {
+      mentions: [user]
+    })
   } catch (e) {
     console.log("Add error:", e)
-    reply(`❌ Failed to add ${number}`)
+
+    reply(`❌ Failed to add @${number}`, {
+      mentions: [user]
+    })
   }
 },
 
+// ================= INVITE USER =================
 invite: async () => {
   if (!isGroup) return reply("❌ Group only")
   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
-  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
   if (!number) {
-    return reply("❌ Usage: .invite 2348012345678")
+    return reply("❌ Usage: .invite @user | reply | 2348012345678")
   }
 
-  // Auto-fix local Nigerian format (080... → 23480...)
+  // Auto-fix Nigerian local format (080... → 23480...)
   if (number.startsWith("0")) {
     number = "234" + number.slice(1)
   }
 
-  const target = number + "@s.whatsapp.net"
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid number")
 
   try {
     const code = await sock.groupInviteCode(jid)
@@ -2646,10 +2848,129 @@ invite: async () => {
       text: `👋 You are invited to join this group:\n\n🔗 ${link}`
     })
 
-    reply(`✅ Invite link sent to ${number}`)
+    reply(`✅ Invite link sent to @${number}`, {
+      mentions: [target]
+    })
   } catch (e) {
     console.log("Invite error:", e)
-    reply(`❌ Failed to send invite to ${number}`)
+
+    reply(`❌ Failed to send invite to @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= KICK USER =================
+kick: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner && !isAdmin) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .kick @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "remove")
+
+    reply(`👢 Removed @${number} from group`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Kick error:", e)
+
+    reply(`❌ Failed to remove @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= PROMOTE USER =================
+promote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .promote @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "promote")
+
+    reply(`👮 @${number} is now an admin`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Promote error:", e)
+
+    reply(`❌ Failed to promote @${number}`, {
+      mentions: [target]
+    })
+  }
+},
+
+// ================= DEMOTE USER =================
+demote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+
+  // supports mention, reply, or raw number
+  let number =
+    getTarget()?.split("@")[0] ||
+    args[0]?.replace(/\D/g, "")
+
+  if (!number) {
+    return reply("❌ Usage: .demote @user | reply | 2348012345678")
+  }
+
+  // Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = normalizeJid(number + "@s.whatsapp.net")
+
+  if (!target) return reply("❌ Invalid user")
+
+  try {
+    await sock.groupParticipantsUpdate(jid, [target], "demote")
+
+    reply(`⬇️ @${number} removed as admin`, {
+      mentions: [target]
+    })
+  } catch (e) {
+    console.log("Demote error:", e)
+
+    reply(`❌ Failed to demote @${number}`, {
+      mentions: [target]
+    })
   }
 },
 

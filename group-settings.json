@@ -318,5 +318,12 @@
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
+  },
+  "120363411319617618@g.us": {
+    "antidelete": false,
+    "antibadword": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
   }
 }
