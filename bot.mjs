@@ -667,7 +667,9 @@ saveOwners()
           // ✅ PREVENT MULTIPLE INTERVALS
           
             setInterval(() => {
+              try{
                 sock.sendPresenceUpdate("unavailable")
+              }catch{}
               }, 6000)
           }
   
