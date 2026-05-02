@@ -17,6 +17,7 @@ import os from "os"
 import moment from "moment-timezone"
 import ffmpegPath from "ffmpeg-static"
 import { exec } from "child_process"
+import fetch from "node-fetch"
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -72,6 +73,37 @@ const BOT_STATS = {
   startTime: Date.now(),
   messages: 0,
   commands: 0
+}
+
+function getUserRole({
+  isOwner,
+  isAdmin,
+  isBot,
+  isGroup
+}) {
+
+  // 🤖 Bot
+  if (isBot) {
+    return "🤖 Bot"
+  }
+
+  // 👑 Owner
+  if (isOwner) {
+    return "👑 Owner"
+  }
+
+  // 🛡️ Group Admin
+  if (isGroup && isAdmin) {
+    return "🛡️ Group Admin"
+  }
+
+  // 👤 Group Member
+  if (isGroup) {
+    return "👤 Group Member"
+  }
+
+  // 💬 Private User
+  return "💬 Private User"
 }
 
 const GROUP_SCHEDULES = {}
@@ -167,172 +199,189 @@ const createSticker = async (buffer) => {
 
   // =====MENU COMMANDS ====
 
-const COMMANDS = {
-  // 🛡️ PROTECTION
-  antilink: "🚫 Block WhatsApp & external links",
-  antibadword: "🧼 Auto-remove offensive words",
-  antidelete: "🧠 Recover deleted messages",
-  antistatus: "👁️ Block status viewing detection",
-  antistatusmention: "📢 Block status mentions",
+const PREMIUM_MENU_SECTIONS = {
+  "🛡️ PROTECTION": [
+    "antilink",
+    "antibadword",
+    "antidelete",
+    "antistatus",
+    "antistatusmention"
+  ],
 
-  // 👥 ADMIN
-  kick: "👢 Remove a user from group",
-  add: "➕ Add user to group",
-  invite: "🔗 Sends group invite link to a user",
-  promote: "⬆️ Promote user to admin",
-  demote: "⬇️ Remove admin privileges",
-  tagall: "📣 Mention all members",
-  hidetag: "👻 Hidden group mention",
-  tagonline: "🟢 Tag active members",
+  "👥 ADMIN": [
+    "kick",
+    "add",
+    "invite",
+    "promote",
+    "demote",
+    "tagall",
+    "hidetag",
+    "tagonline"
+  ],
+
+  "⚙️ GROUP": [
+    "setname",
+    "setdesc",
+    "groupinfo",
+    "grouplink",
+    "revoke",
+    "lock",
+    "unlock",
+    "mute",
+    "unmute",
+    "mutelist"
+  ],
+
+  "🕒 SCHEDULE": [
+    "setopen",
+    "setclose",
+    "schedule",
+    "scheduleon",
+    "scheduleoff"
+  ],
+
+  "🎨 MEDIA": [
+    "getstatus",
+    "vv",
+    "pp",
+    "sticker",
+    "stickergif",
+    "memesticker",
+    "captionsticker",
+    "stickerpack"
+  ],
+
+  "👑 OWNER": [
+    "addowner",
+    "delowner",
+    "owners",
+    "restart",
+    "shutdown",
+    "broadcast",
+    "ban",
+    "unban"
+  ],
+
+  "⚠️ WARN": [
+    "warn",
+    "warnlist",
+    "warninfo",
+    "unwarn",
+    "resetwarns"
+  ],
+
+  "📦 STICKER PACK": [
+    "packcreate",
+    "packadd",
+    "packview",
+    "packlist",
+    "packdelete",
+    "packsend"
+  ],
+
+  "ℹ️ INFO": [
+    "mode",
+    "alive",
+    "whoami",
+    "stats",
+    "ping"
+  ]
+}
+
+const COMMAND_DESCRIPTIONS = {
+  // 🛡️ PROTECTION
+  antilink: "🚫 𝘽𝙡𝙤𝙘𝙠 𝙒𝙝𝙖𝙩𝙨𝘼𝙥𝙥 & 𝙚𝙭𝙩𝙚𝙧𝙣𝙖𝙡 𝙡𝙞𝙣𝙠𝙨",
+  antibadword: "🧼 𝘼𝙪𝙩𝙤-𝙧𝙚𝙢𝙤𝙫𝙚 𝙤𝙛𝙛𝙚𝙣𝙨𝙞𝙫𝙚 𝙬𝙤𝙧𝙙𝙨",
+  antidelete: "🧠 𝙍𝙚𝙘𝙤𝙫𝙚𝙧 𝙙𝙚𝙡𝙚𝙩𝙚𝙙 𝙢𝙚𝙨𝙨𝙖𝙜𝙚𝙨",
+  antistatus: "👁️ 𝘽𝙡𝙤𝙘𝙠 𝙨𝙩𝙖𝙩𝙪𝙨 𝙫𝙞𝙚𝙬𝙞𝙣𝙜",
+  antistatusmention: "📢 𝘽𝙡𝙤𝙘𝙠 𝙨𝙩𝙖𝙩𝙪𝙨 𝙢𝙚𝙣𝙩𝙞𝙤𝙣𝙨",
+
+// 👥 ADMIN
+  kick: "👢 𝙍𝙚𝙢𝙤𝙫𝙚 𝙖 𝙪𝙨𝙚𝙧 𝙛𝙧𝙤𝙢 𝙜𝙧𝙤𝙪𝙥",
+  add: "➕ 𝘼𝙙𝙙 𝙪𝙨𝙚𝙧 𝙩𝙤 𝙜𝙧𝙤𝙪𝙥",
+  invite: "🔗 𝙎𝙚𝙣𝙙 𝙜𝙧𝙤𝙪𝙥 𝙞𝙣𝙫𝙞𝙩𝙚 𝙡𝙞𝙣𝙠",
+  promote: "⬆️ 𝙋𝙧𝙤𝙢𝙤𝙩𝙚 𝙪𝙨𝙚𝙧 𝙩𝙤 𝙖𝙙𝙢𝙞𝙣",
+  demote: "⬇️ 𝙍𝙚𝙢𝙤𝙫𝙚 𝙖𝙙𝙢𝙞𝙣 𝙥𝙧𝙞𝙫𝙞𝙡𝙚𝙜𝙚𝙨",
+  tagall: "📣 𝙈𝙚𝙣𝙩𝙞𝙤𝙣 𝙖𝙡𝙡 𝙢𝙚𝙢𝙗𝙚𝙧𝙨",
+  hidetag: "👻 𝙃𝙞𝙙𝙙𝙚𝙣 𝙜𝙧𝙤𝙪𝙥 𝙢𝙚𝙣𝙩𝙞𝙤𝙣",
+  tagonline: "🟢 𝙏𝙖𝙜 𝙖𝙘𝙩𝙞𝙫𝙚 𝙢𝙚𝙢𝙗𝙚𝙧𝙨",
 
   // ⚙️ GROUP
-setname: "✏️ Change group name",
-setdesc: "📝 Update group description",
-  groupinfo: "📊 View group analytics",
-  grouplink: "🔗 Get invite link",
-  revoke: "♻️ Reset invite link",
-  lock: "🔒 Lock group (admins only)",
-  unlock: "🔓 Unlock group chat",
-   mute: "🔇 Mute a user",
-unmute: "🔊 Unmute a user",
-mutelist: "📋 View muted users",
-clearlinks: "🧹 Reinforce anti-link",
-opentemp: "🔓 Open group temporarily",
-closetemp: "🔒 Lock group temporarily",
+  setname: "✏️ 𝘾𝙝𝙖𝙣𝙜𝙚 𝙜𝙧𝙤𝙪𝙥 𝙣𝙖𝙢𝙚",
+  setdesc: "📝 𝙐𝙥𝙙𝙖𝙩𝙚 𝙜𝙧𝙤𝙪𝙥 𝙙𝙚𝙨𝙘",
+  groupinfo: "📊 𝙑𝙞𝙚𝙬 𝙜𝙧𝙤𝙪𝙥 𝙖𝙣𝙖𝙡𝙮𝙩𝙞𝙘𝙨",
+  grouplink: "🔗 𝙂𝙚𝙩 𝙞𝙣𝙫𝙞𝙩𝙚 𝙡𝙞𝙣𝙠",
+  revoke: "♻️ 𝙍𝙚𝙨𝙚𝙩 𝙞𝙣𝙫𝙞𝙩𝙚 𝙡𝙞𝙣𝙠",
+  lock: "🔒 𝙇𝙤𝙘𝙠 𝙜𝙧𝙤𝙪𝙥",
+  unlock: "🔓 𝙐𝙣𝙡𝙤𝙘𝙠 𝙜𝙧𝙤𝙪𝙥",
+  mute: "🔇 𝙈𝙪𝙩𝙚 𝙖 𝙪𝙨𝙚𝙧",
+  unmute: "🔊 𝙐𝙣𝙢𝙪𝙩𝙚 𝙖 𝙪𝙨𝙚𝙧",
+  mutelist: "📋 𝙑𝙞𝙚𝙬 𝙢𝙪𝙩𝙚𝙙 𝙪𝙨𝙚𝙧𝙨",
 
   // 🕒 SCHEDULE
-  setopen: "🌅 Set daily group opening time",
-  setclose: "🌙 Set daily group closing time",
-  schedule: "📅 View group schedule",
-  scheduleon: "✅ Enable group schedule",
-  scheduleoff: "⛔ Disable group schedule",
-  delschedule: "🗑️ Delete group schedule",
+  setopen: "🌅 𝙎𝙚𝙩 𝙙𝙖𝙞𝙡𝙮 𝙤𝙥𝙚𝙣 𝙩𝙞𝙢𝙚",
+  setclose: "🌙 𝙎𝙚𝙩 𝙙𝙖𝙞𝙡𝙮 𝙘𝙡𝙤𝙨𝙚 𝙩𝙞𝙢𝙚",
+  schedule: "📅 𝙑𝙞𝙚𝙬 𝙜𝙧𝙤𝙪𝙥 𝙨𝙘𝙝𝙚𝙙𝙪𝙡𝙚",
+  scheduleon: "✅ 𝙀𝙣𝙖𝙗𝙡𝙚 𝙨𝙘𝙝𝙚𝙙𝙪𝙡𝙚",
+  scheduleoff: "⛔ 𝘿𝙞𝙨𝙖𝙗𝙡𝙚 𝙨𝙘𝙝𝙚𝙙𝙪𝙡𝙚",
 
   // 🎨 MEDIA
-  // 👁️ STATUS
-  getstatus: "📥 Extract WhatsApp status (image/video/text from reply)",
-  vv: "👁️ Recover view-once media",
-  pp: "🖼️ HD profile picture fetch",
-  sticker: "🎭 Convert image to sticker",
-  stickergif: "🎬 Video → animated sticker",
-  memesticker: "😂 Text → meme sticker",
-  captionsticker: "✍️ Caption → sticker",
-  stickerpack: "📦 Create custom sticker pack",
+  getstatus: "📥 𝙀𝙭𝙩𝙧𝙖𝙘𝙩 𝙒𝙝𝙖𝙩𝙨𝘼𝙥𝙥 𝙨𝙩𝙖𝙩𝙪𝙨",
+  vv: "👁️ 𝙍𝙚𝙘𝙤𝙫𝙚𝙧 𝙫𝙞𝙚𝙬-𝙤𝙣𝙘𝙚",
+  pp: "🖼️ 𝙃𝘿 𝙥𝙧𝙤𝙛𝙞𝙡𝙚 𝙥𝙞𝙘",
+  sticker: "🎭 𝘾𝙤𝙣𝙫𝙚𝙧𝙩 𝙞𝙢𝙖𝙜𝙚 𝙩𝙤 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  stickergif: "🎬 𝙑𝙞𝙙𝙚𝙤 → 𝙖𝙣𝙞𝙢𝙖𝙩𝙚𝙙 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  memesticker: "😂 𝙏𝙚𝙭𝙩 → 𝙢𝙚𝙢𝙚 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  captionsticker: "✍️ 𝘾𝙖𝙥𝙩𝙞𝙤𝙣 → 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  stickerpack: "📦 𝘾𝙧𝙚𝙖𝙩𝙚 𝙨𝙩𝙞𝙘𝙠𝙚𝙧 𝙥𝙖𝙘𝙠",
 
   // 👑 OWNER
-  addowner: "👑 Add bot owner",
-  delowner: "🗑️ Remove bot owner",
-  owners: "📋 View all owners",
-  restart: "🔄 Restart bot system",
-  shutdown: "⛔ Shutdown bot safely",
-  broadcast: "📢 Send message to all chats",
-  ban: "🚷 Block user access",
-  unban: "✅ Unblock user access",
+  addowner: "👑 𝘼𝙙𝙙 𝙗𝙤𝙩 𝙤𝙬𝙣𝙚𝙧",
+  delowner: "🗑️ 𝙍𝙚𝙢𝙤𝙫𝙚 𝙗𝙤𝙩 𝙤𝙬𝙣𝙚𝙧",
+  owners: "📋 𝙑𝙞𝙚𝙬 𝙤𝙬𝙣𝙚𝙧𝙨",
+  restart: "🔄 𝙍𝙚𝙨𝙩𝙖𝙧𝙩 𝙗𝙤𝙩",
+  shutdown: "⛔ 𝙎𝙝𝙪𝙩𝙙𝙤𝙬𝙣 𝙗𝙤𝙩",
+  broadcast: "📢 𝘽𝙧𝙤𝙖𝙙𝙘𝙖𝙨𝙩 𝙩𝙤 𝙖𝙡𝙡 𝙘𝙝𝙖𝙩𝙨",
+  ban: "🚷 𝘽𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
+  unban: "✅ 𝙐𝙣𝙗𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
 
-    // ⚠️ WARNING SYSTEM
-  warn: "⚠️ Warn a user (auto kick at 3 warns)",
-  warnlist: "📋 View all warnings in group",
-  warninfo: "👤 Check a user warning history",
-  unwarn: "🧹 Clear user warnings",
-  resetwarns: "♻️ Clear all warnings",
- 
+  // ⚠️ WARN
+  warn: "⚠️ 𝙒𝙖𝙧𝙣 𝙖 𝙪𝙨𝙚𝙧",
+  warnlist: "📋 𝙑𝙞𝙚𝙬 𝙬𝙖𝙧𝙣 𝙡𝙞𝙨𝙩",
+  warninfo: "👤 𝘾𝙝𝙚𝙘𝙠 𝙬𝙖𝙧𝙣 𝙝𝙞𝙨𝙩𝙤𝙧𝙮",
+  unwarn: "🧹 𝘾𝙡𝙚𝙖𝙧 𝙬𝙖𝙧𝙣",
+  resetwarns: "♻️ 𝙍𝙚𝙨𝙚𝙩 𝙖𝙡𝙡 𝙬𝙖𝙧𝙣𝙨",
 
-  // 🔐 MODE
- mode: "⚙️ Switch bot operating mode (public/private/group/dm/auto)",
+  // 📦 STICKER PACK
+  packcreate: "📦 𝘾𝙧𝙚𝙖𝙩𝙚 𝙣𝙚𝙬 𝙥𝙖𝙘𝙠",
+  packadd: "➕ 𝘼𝙙𝙙 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  packview: "👀 𝙑𝙞𝙚𝙬 𝙥𝙖𝙘𝙠",
+  packlist: "📚 𝙑𝙞𝙚𝙬 𝙥𝙖𝙘𝙠𝙨",
+  packdelete: "🗑️ 𝘿𝙚𝙡𝙚𝙩𝙚 𝙥𝙖𝙘𝙠",
+  packsend: "🎲 𝙍𝙖𝙣𝙙𝙤𝙢 𝙥𝙖𝙘𝙠 𝙨𝙚𝙣𝙙",
 
   // ℹ️ INFO
-  alive: "💚 Check bot status",
-  whoami: "🆔 Show your WhatsApp ID",
-  stats: "📊 Bot usage statistics",
-  ping: "🏓 Check bot response speed (latency test)",
-
-// 📦 STICKER PACK SYSTEM
-packcreate: "📦 Create a new sticker pack",
-packadd: "➕ Add image/video sticker to pack",
-packview: "👀 View stickers inside a pack",
-packlist: "📚 View all saved sticker packs",
-packdelete: "🗑️ Delete a sticker pack",
-packsend: "🎲 Send random sticker from pack",
-}
-
-const groupCommands = (cmdObj) => {
-  const groups = {
-    "🛡️ GROUP PROTECTION": [],
-    "👥 ADMIN MODERATION": [],
-    "⚙️ GROUP MANAGEMENT": [],
-    "🕒 SCHEDULE": [],
-    "⚠️ WARNING SYSTEM": [],
-    "🎨 MEDIA": [],
-    "📦 STICKER PACK SYSTEM": [],
-    "👑 OWNER CONTROL": [],
-    "🔐 MODE CONTROL": [],
-    "ℹ️ INFO": [],
-  }
-
-  for (const [cmd, desc] of Object.entries(cmdObj)) {
-    const line = `│ .${cmd} → ${desc}`
-
-    if (["antilink","antibadword","antidelete","antistatus","antistatusmention"].includes(cmd)) {
-      groups["🛡️ GROUP PROTECTION"].push(line)
-    }
-
-    else if (["kick","add", "invite","promote","demote","tagall","hidetag","tagonline"].includes(cmd)) {
-      groups["👥 ADMIN MODERATION"].push(line)
-    }
-
-    else if (["setname","setdesc","groupinfo","grouplink","revoke","lock","unlock","mute","unmute","mutelist","clearlinks","opentemp","closetemp"].includes(cmd)) {
-      groups["⚙️ GROUP MANAGEMENT"].push(line)
-    
-    }
-
-    else if (["setopen","setclose","schedule","scheduleon","scheduleoff","delschedule"].includes(cmd)) {
-      groups["🕒 SCHEDULE"].push(line)
-    }
-
-    else if (["warn","warnlist","warninfo","unwarn","resetwarns"].includes(cmd)) {
-  groups["⚠️ WARNING SYSTEM"].push(line)
-}
-
-    else if (["getstatus","vv","pp","sticker","stickergif","memesticker","captionsticker","stickerpack"].includes(cmd)) {
-      groups["🎨 MEDIA"].push(line)
-    }
-
-    else if (["addowner","delowner","owners","restart","shutdown","broadcast","ban","unban"].includes(cmd)) {
-      groups["👑 OWNER CONTROL"].push(line)
-    }
-
-    else if (["mode"].includes(cmd)) {
-      groups["🔐 MODE CONTROL"].push(line)
-    }
-
-    else if (["alive", "ping", "whoami","stats"].includes(cmd)) {
-      groups["ℹ️ INFO"].push(line)
-    }
-
-
-else if (["packcreate","packadd","packview","packlist","packdelete","packsend"].includes(cmd)) {
-  groups["📦 STICKER PACK SYSTEM"].push(`│ .${cmd} → ${cmdObj[cmd]}`)
-}
-  }
-
-  return groups
+  mode: "⚙️ 𝙎𝙬𝙞𝙩𝙘𝙝 𝙗𝙤𝙩 𝙢𝙤𝙙𝙚",
+  alive: "💚 𝘾𝙝𝙚𝙘𝙠 𝙗𝙤𝙩 𝙨𝙩𝙖𝙩𝙪𝙨",
+  whoami: "🆔 𝙎𝙝𝙤𝙬 𝙮𝙤𝙪𝙧 𝙄𝘿",
+  stats: "📊 𝘽𝙤𝙩 𝙪𝙨𝙖𝙜𝙚 𝙨𝙩𝙖𝙩𝙨",
+  ping: "🏓 𝘾𝙝𝙚𝙘𝙠 𝙨𝙥𝙚𝙚𝙙"
 }
 
 
 const menuHeaders = [
-  "╭─❖ 🤖 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 𝐁𝐎𝐓 𝐌𝐄𝐍𝐔 ❖─╮",
-  "╭─⚡ 𝐒𝐘𝐒𝐓𝐄𝐌 𝐎𝐍𝐋𝐈𝐍𝐄 • 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 ⚡─╮",
-  "╭─🚀 𝐌𝐔𝐋𝐓𝐈-𝐅𝐔𝐍𝐂𝐓𝐈𝐎𝐍 𝐏𝐀𝐍𝐄𝐋 🚀─╮",
-  "╭─🔥 𝐏𝐎𝐖𝐄𝐑 𝐌𝐎𝐃𝐄: 𝐀𝐂𝐓𝐈𝐕𝐄 🔥─╮",
-  "╭─🧠 𝐒𝐌𝐀𝐑𝐓 𝐁𝐎𝐓 𝐈𝐍𝐓𝐄𝐑𝐅𝐀𝐂𝐄 🧠─╮",
-  "╭─📡 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃 • 𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 𝐍𝐄𝐓𝐖𝐎𝐑𝐊 📡─╮",
-  "╭─🛡️ 𝐒𝐄𝐂𝐔𝐑𝐈𝐓𝐘 𝐒𝐘𝐒𝐓𝐄𝐌 𝐀𝐂𝐓𝐈𝐕𝐄 🛡️─╮",
-  "╭─⚙️ 𝐄𝐍𝐆𝐈𝐍𝐄 𝐋𝐎𝐀𝐃𝐄𝐃 • 𝐑𝐄𝐀𝐃𝐘 ⚙️─╮",
-  "╭─🌐 𝐆𝐋𝐎𝐁𝐀𝐋 𝐍𝐄𝐓𝐖𝐎𝐑𝐊 𝐎𝐍𝐋𝐈𝐍𝐄 🌐─╮",
-  "╭─💥 𝐔𝐋𝐓𝐑𝐀 𝐏𝐄𝐑𝐅𝐎𝐑𝐌𝐀𝐍𝐂𝐄 💥─╮",
-  "╭─📊 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋 📊─╮",
-  "╭─🔔 𝐑𝐄𝐀𝐋-𝐓𝐈𝐌𝐄 𝐌𝐎𝐍𝐈𝐓𝐎𝐑 🔔─╮",
-  "╭─👑 𝐎𝐖𝐍𝐄𝐑 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃 👑─╮"
+  "🤖 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄 𝐁𝐎𝐓 𝐌𝐄𝐍𝐔",
+  "⚡ 𝐒𝐘𝐒𝐓𝐄𝐌 𝐎𝐍𝐋𝐈𝐍𝐄 • 𝐆𝐈𝐁𝐁𝐎𝐑𝐋𝐄𝐄",
+  "🚀 𝐌𝐔𝐋𝐓𝐈-𝐅𝐔𝐍𝐂𝐓𝐈𝐎𝐍 𝐏𝐀𝐍𝐄𝐋",
+  "🔥 𝐏𝐎𝐖𝐄𝐑 𝐌𝐎𝐃𝐄: 𝐀𝐂𝐓𝐈𝐕𝐄",
+  "🧠 𝐒𝐌𝐀𝐑𝐓 𝐁𝐎𝐓 𝐈𝐍𝐓𝐄𝐑𝐅𝐀𝐂𝐄",
+  "🛡️ 𝐒𝐄𝐂𝐔𝐑𝐈𝐓𝐘 𝐒𝐘𝐒𝐓𝐄𝐌 𝐀𝐂𝐓𝐈𝐕𝐄",
+  "⚙️ 𝐄𝐍𝐆𝐈𝐍𝐄 𝐋𝐎𝐀𝐃𝐄𝐃 • 𝐑𝐄𝐀𝐃𝐘",
+  "🌐 𝐆𝐋𝐎𝐁𝐀𝐋 𝐍𝐄𝐓𝐖𝐎𝐑𝐊 𝐎𝐍𝐋𝐈𝐍𝐄",
+  "💥 𝐔𝐋𝐓𝐑𝐀 𝐏𝐄𝐑𝐅𝐎𝐑𝐌𝐀𝐍𝐂𝐄",
+  "📊 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋",
+  "🔔 𝐑𝐄𝐀𝐋-𝐓𝐈𝐌𝐄 𝐌𝐎𝐍𝐈𝐓𝐎𝐑",
+  "👑 𝐎𝐖𝐍𝐄𝐑 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃"
 ]
 
 const getHeader = () =>
@@ -469,6 +518,59 @@ const getSettings = (jid) => {
     return SETTINGS[jid]
   }
 
+  // PREMIUM MENU BACGROUND
+async function getPremiumMenuBackground() {
+  try {
+    const hour = new Date().getHours()
+
+    let category = "nature"
+
+    // 🌅 Morning (soft sunrise)
+    if (hour >= 5 && hour < 12) {
+      category = "sunrise,nature,sky,morning"
+    }
+
+    // ☀️ Afternoon (bright clean)
+    else if (hour >= 12 && hour < 17) {
+      category = "landscape,mountains,day,sky"
+    }
+
+    // 🌆 Evening (golden hour)
+    else if (hour >= 17 && hour < 21) {
+      category = "sunset,city,sky,evening"
+    }
+
+    // 🌙 Night (dark aesthetic)
+    else {
+      category = "night,city,stars,moon"
+    }
+
+    // 📱 WhatsApp portrait HD format
+    // 1080x1920 = full portrait
+    // lock= prevents random crop shifting
+    const seed = Date.now()
+
+    return `https://loremflickr.com/1080/1920/${category}?lock=${seed}`
+
+  } catch (e) {
+
+    console.log("Wallpaper Fetch Error:", e)
+
+    // 🔥 Emergency fallback
+    const fallback = [
+      "https://picsum.photos/seed/morningwall/1080/1920",
+      "https://picsum.photos/seed/daywall/1080/1920",
+      "https://picsum.photos/seed/eveningwall/1080/1920",
+      "https://picsum.photos/seed/nightwall/1080/1920"
+    ]
+
+    return fallback[
+      Math.floor(Math.random() * fallback.length)
+    ]
+  }
+}
+
+
 
 // ================= START =================
 async function start(session) {
@@ -566,7 +668,7 @@ saveOwners()
           
             setInterval(() => {
                 sock.sendPresenceUpdate("unavailable")
-            }, 1000)
+              }, 6000)
           }
   
         if (connection === "close") {
@@ -601,6 +703,7 @@ saveOwners()
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
     const msg = messages[0]
+    
     const jid = msg.key.remoteJid || ""
     if (!msg.message) return
     let groupAdmins = []
@@ -620,7 +723,7 @@ const {
   isBot
 } = getPermissions({ msg, sock, BOT_OWNERS, groupAdmins })
     // const sender = normalizeJid(msg.key.participant || msg.key.remoteJid)
-
+const botId = normalizeJid(sock.user?.id || "")
 const cleanSender = normalizeJid(sender)
 
 
@@ -852,8 +955,8 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   tagall: "📣",
   hidetag: "👻",
   tagonline: "🟢",
-  delete: "❌",
-  del: "🧼",
+  delete: "🧼",
+  del: "🚮",
 
   setname: "✏️",
   setdesc: "📝",
@@ -2829,17 +2932,20 @@ antistatusmention: async () => {
 },
 
 delete: async () => {
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo
-
   if (!quoted) return reply("❌ Reply to a message to delete")
 
   const key = {
     remoteJid: jid,
-    fromMe: false,
-    id: quoted.stanzaId,
-    participant: quoted.participant
+    fromMe: quoted.fromMe || false,
+    id: quoted.stanzaId || quoted.key?.id,
+  }
+
+  // only add participant if it exists (group chats)
+  if (quoted.participant) {
+    key.participant = quoted.participant
   }
 
   try {
@@ -2852,21 +2958,23 @@ delete: async () => {
 },
 
 del: async () => {
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo
+  if (!quoted) return reply("❌ Reply to message")
 
-  if (!quoted) return reply("Reply to message")
+  const key = {
+    remoteJid: jid,
+    fromMe: quoted.fromMe || false,
+    id: quoted.stanzaId || quoted.key?.id,
+  }
+
+  if (quoted.participant) {
+    key.participant = quoted.participant
+  }
 
   try {
-    await sock.sendMessage(jid, {
-      delete: {
-        remoteJid: jid,
-        fromMe: false,
-        id: quoted.stanzaId,
-        participant: quoted.participant
-      }
-    })
+    await sock.sendMessage(jid, { delete: key })
   } catch (e) {
     console.log(e)
     reply("❌ Cannot delete (WhatsApp limitation)")
@@ -3063,48 +3171,89 @@ ${e.message || "Unknown error"}`
       
 menu: async () => {
   
+  const sender =
+  normalizeJid(
+    msg.key.participant ||
+    msg.key.remoteJid ||
+    ""
+  )
 
   const header = getHeader()
   
- const from = msg.key.remoteJid 
- const userJid = msg.key.participant || msg.key.remoteJid
-
-  const pushName =
+const userRole = getUserRole({
+  isOwner,
+  isAdmin,
+  isBot,
+  isGroup
+})
+    
+  const userName =
     msg.pushName ||
-    msg.name ||
-    "Unknown User"
+    sender.split("@")[0]
+
+
+    function formatRuntime(seconds) {
+  seconds = Number(seconds)
+
+    const d = Math.floor(seconds / (3600 * 24))
+  const h = Math.floor(seconds % (3600 * 24) / 3600)
+  const m = Math.floor(seconds % 3600 / 60)
+  const s = Math.floor(seconds % 60)
+
+  return [
+    d ? `${d}d` : "",
+    h ? `${h}h` : "",
+    m ? `${m}m` : "",
+    `${s}s`
+  ].filter(Boolean).join(" ")
+
+    }
+
+  const uptime = formatRuntime(process.uptime())
+ const from = msg.key.remoteJid 
+
+
+  // const pushName =
+  //   msg.pushName ||
+  //   msg.name ||
+  //   "Unknown User"
 
  // ===== ROLE SYSTEM =====
-  let role = "👤 User"
+  // let role = "👤 User"
 
-  try {
-    if (from.endsWith("@g.us")) {
-      const metadata = await sock.groupMetadata(from)
+  // try {
+  //   if (from.endsWith("@g.us")) {
+  //     const metadata = await sock.groupMetadata(from)
 
-      const participant = metadata.participants.find(
-        p => p.id === userJid
-      )
+  //     const participant = metadata.participants.find(
+  //       p => p.id === userJid
+  //     )
 
-      if (participant) {
-        if (participant.admin === "superadmin") {
-          role = "👑 Group Owner"
-        } else if (participant.admin === "admin") {
-          role = "🛡️ Group Admin"
-        } else {
-          role = "👤 Member"
-        }
-      }
-    }
-  } catch {
-    role = "👤 User"
-  }
+  //     if (participant) {
+  //       if (participant.admin === "superadmin") {
+  //         role = "👑 Group Owner"
+  //       } else if (participant.admin === "admin") {
+  //         role = "🛡️ Group Admin"
+  //       } else {
+  //         role = "👤 Member"
+  //       }
+  //     }
+  //   }
+  // } catch {
+  //   role = "👤 User"
+  // }
 
 // 📸 RANDOM SMALL MENU IMAGE
-const randomImage = `https://picsum.photos/seed/menu${Date.now()}/500/300`
+// const randomImage = `https://picsum.photos/seed/menu${Date.now()}/500/350`
+
+ // 🌍 Realistic wallpapers:
+const bg = await getPremiumMenuBackground()
+
+
 
   // 📊 SYSTEM INFO
-  const uptime = process.uptime()
-  const uptimeText = `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`
+  // const uptime = process.uptime()
+  // const uptimeText = `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`
 
   const memory = (process.memoryUsage().rss / 1024 / 1024).toFixed(2)
 
@@ -3114,87 +3263,99 @@ const randomImage = `https://picsum.photos/seed/menu${Date.now()}/500/300`
   const time = moment().tz("Africa/Lagos").format("HH:mm:ss")
   const date = moment().tz("Africa/Lagos").format("DD/MM/YYYY")
 
-  const ownerText = BOT_OWNERS.length
-    ? BOT_OWNERS.map(o => `• @${o.split("@")[0]}`).join("\n")
-    : "• No owners set"
+  // const ownerText = BOT_OWNERS.length
+  //   ? BOT_OWNERS.map(o => `• @${o.split("@")[0]}`).join("\n")
+  //   : "• No owners set"
 
-  // 🌅 GREETING SYSTEM
+  // // 🌅 GREETING SYSTEM
+  // const hour = new Date().getHours()
+  // const greet =
+  //   hour < 12 ? "🌅 Good Morning" :
+  //   hour < 16 ? "🌞 Good Afternoon" :
+  //               "🌙 Good Evening"
+
+  // ================= GREETING SYSTEM =================
+function getGreeting() {
   const hour = new Date().getHours()
-  const greet =
-    hour < 12 ? "🌅 Good Morning" :
-    hour < 16 ? "🌞 Good Afternoon" :
-                "🌙 Good Evening"
+
+  if (hour >= 5 && hour < 12) {
+    return "🌅 Good Morning"
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return "☀️ Good Afternoon"
+  }
+
+  if (hour >= 17 && hour < 21) {
+    return "🌆 Good Evening"
+  }
+
+  return "🌙 Good Night"
+}
+
+// ================= OPTIONAL THEME LABEL =================
+function getThemeLabel() {
+  const hour = new Date().getHours()
+
+  if (hour >= 5 && hour < 12) return "Morning Serenity"
+  if (hour >= 12 && hour < 17) return "Golden Daylight"
+  if (hour >= 17 && hour < 21) return "Sunset Vibes"
+
+  return "Moonlight Dreams"
+}
+
 
  if (!isOwner) return reply("❌ Owner only")
   
 
   // 📜 MENU TEXT
 
-  let text = `
-${header}
-╰━━━━━━━━━━━━━━━━━━━╯
+   let menuText = `
+╔═══━━━── • ──━━━═══╗
+ ${header}
+╚═══━━━── • ──━━━═══╝
 
-${greet}, ${pushName} 👋
-How can I be of help to you now?
-I am glad to help you out
+${getGreeting()}, *${userName}* 👋
 
-━━━━━━━━━━━━━━━━━━━━
-👑 *OWNER PANEL*
-╭───────────────╮
-│ 👥 Owners: ${BOT_OWNERS.length}
-╰───────────────╯
-${ownerText}
+🕒 ${time}
+📅 ${date}
+🎨 Theme: ${getThemeLabel()}
+🪪 Role: ${userRole}
+👑 Owners: ${BOT_OWNERS.length}
+📊 Messages: ${BOT_STATS.messages}
+⚡ Runtime: ${uptime}
+💾 RAM: ${memory} MB
+🧠 Total: ${totalRAM} GB
+🧹 Free: ${freeRAM} GB
+🛠️ Mode: ${settings?.mode || "public"}
+🔰 Prefix: ${PREFIX}
 
-━━━━━━━━━━━━━━━━━━━━
-👤 *USER PROFILE*
-╭───────────────╮
-│ 🏷️ Name: ${pushName}
-│ 🎭 Role: ${role}
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-⏰ *TIME & DATE*
-╭───────────────╮
-│ 🕒 ${time}
-│ 📅 ${date}
-╰───────────────╯
-
-━━━━━━━━━━━━━━━━━━━━
-📊 *SYSTEM STATS*
-╭───────────────╮
-│ ⚡ Uptime: ${uptimeText}
-│ 💾 RAM: ${memory} MB
-│ 🧠 Total: ${totalRAM} GB
-│ 🧹 Free: ${freeRAM} GB
-╰───────────────╯
+━━━━━━━━━━━━━━━━━━
 `
-const grouped = groupCommands(COMMANDS)
 
-  for (const [title, cmds] of Object.entries(grouped)) {
-    if (!cmds.length) continue
+ for (const category in PREMIUM_MENU_SECTIONS) {
+  menuText += `\n╭─❍ ${category}\n`
 
-    text += `
-━━━━━━━━━━━━━━━━━━━━
-╭─「 ${title} 」─╮
-${cmds.join("\n")}
-╰────────────────────╯
-`
+  for (const command of PREMIUM_MENU_SECTIONS[category]) {
+    const desc = COMMAND_DESCRIPTIONS[command] || "No description"
+
+    menuText += `│ ${PREFIX}${command}\n`
+    menuText += `│ ➜ ${desc}\n`
   }
-
-  text += `
+  menuText += `╰────────────\n`
+}
+    menuText += `
 ━━━━━━━━━━━━━━━━━━━━
-╔════════════════════════════╗
-║ ✨ Clean • Smart • Powerful ✨ 
-║   Your wish is my command 🤭   
-╚════════════════════════════╝
+╔═══━━━── • ──━━━═══╗
+                POWERED BY GIBBOR  
+╚═══━━━── • ──━━━═══╝
 `
  // ===== SEND MENU WITH WORKING IMAGE =====
-return sock.sendMessage(from, {
-   image: { url: randomImage }, 
-   caption: text, 
-   mentions: BOT_OWNERS 
-  }, { quoted: msg }
-) 
+  await sock.sendMessage(from, {
+   image: { url: bg }, 
+   caption: menuText, 
+   mentions: [sender] 
+  }, { quoted: msg }) 
 }
 }
     // ================= EXECUTION =================
@@ -3212,8 +3373,10 @@ if (commands[cmd]) {
     // ⏳ small delay ensures reaction shows first (important on WhatsApp)
     await new Promise(r => setTimeout(r, 200))
 
+    
    // ✅ RUN COMMAND
     await commands[cmd]()
+    await react("✅")
 
   } catch (e) {
     console.log(`❌ Command Error (${cmd}):`, e)
@@ -3242,4 +3405,4 @@ return sock
 
 
 // =================  SESSION =================
-;["session1", "session2"].forEach(start)
+;["session2", "session1"].forEach(start)

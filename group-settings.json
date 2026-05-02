@@ -381,5 +381,19 @@
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
+  },
+  "120363417942396615@g.us": {
+    "antidelete": false,
+    "antibadword": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
+  },
+  "184451850047489@lid": {
+    "antidelete": false,
+    "antibadword": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
   }
 }

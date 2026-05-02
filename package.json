@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
-    "axios": "^1.15.1",
+    "axios": "^1.16.0",
     "body-parser": "^2.2.2",
     "canvas": "^3.2.3",
     "cors": "^2.8.6",
