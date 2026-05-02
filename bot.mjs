@@ -67,7 +67,7 @@ let reconnecting = false
 
 
 // ================= CONFIG =================
-const PREFIX = "."
+const PREFIX = "!"
 const BOT_STATS = {
   startTime: Date.now(),
   messages: 0,
