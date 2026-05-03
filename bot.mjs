@@ -716,53 +716,6 @@ if (jid.endsWith("@g.us")) {
     .filter(p => p.admin)
     .map(p => p.id)
 }
-  // detect view once
-  // const viewOnce =
-  //   msg.message.viewOnceMessage ||
-  //   msg.message.viewOnceMessageV2 ||
-  //   msg.message.viewOnceMessageV2Extension
-
-  // if (!viewOnce) return
-
-  // try {
-  //   //🔥 react to message
-  //   await sock.sendMessage(jid, {
-  //     react: {
-  //       text: "🔥",
-  //       key: msg.key
-  //     }
-  //   })
-
-  //   let mediaMsg =
-  //     viewOnce.message.imageMessage ||
-  //     viewOnce.message.videoMessage ||
-  //     viewOnce.message.audioMessage ||
-  //     viewOnce.message.documentMessage
-
-  //   if (!mediaMsg) return
-
-  //   // download stream
-  //   const stream = await downloadContentFromMessage(mediaMsg, mediaMsg.mimetype.startsWith("image") ? "image"
-  //     : mediaMsg.mimetype.startsWith("video") ? "video"
-  //     : mediaMsg.mimetype.startsWith("audio") ? "audio"
-  //     : "document"
-  //   )
-
-  //   let buffer = Buffer.from([])
-  //   for await (const chunk of stream) {
-  //     buffer = Buffer.concat([buffer, chunk])
-  //   }
-
-  //   // forward to owner
-  //   await sock.sendMessage(OWNER_JID, {
-  //     document: buffer,
-  //     mimetype: mediaMsg.mimetype,
-  //     fileName: mediaMsg.fileName || "viewonce_media"
-  //   }, { quoted: msg })
-
-  // } catch (err) {
-  //   console.log("ViewOnce handler error:", err)
-  // }
 
 
 // ✅ NEW PERMISSION SYSTEM
