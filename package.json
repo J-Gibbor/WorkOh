@@ -19,6 +19,7 @@
     "body-parser": "^2.2.2",
     "canvas": "^3.2.3",
     "cors": "^2.8.6",
+    "crypto": "^1.0.1",
     "ejs": "^5.0.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",

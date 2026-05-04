@@ -66,6 +66,10 @@ process.on("unhandledRejection", (err) => {
 let CURRENT_QR = ""
 let reconnecting = false
 
+// ================= GLOBAL STORAGE =================
+global.STATUS_DB = global.STATUS_DB || []
+global.STATUS_HASH = new Set()
+
 // ================= RUNTIME FORMATTER =================
 
 function formatRuntime(ms) {
@@ -399,7 +403,11 @@ const PREMIUM_MENU_SECTIONS = {
     "stickergif",
     "memesticker",
     "captionsticker",
-    "stickerpack"
+    "stickerpack",
+     "statuslist",
+  "autostatus",
+  "statusfilter",
+  "statusclear",
   ],
 
   "👑 OWNER": [
@@ -493,6 +501,11 @@ const COMMAND_DESCRIPTIONS = {
   memesticker: "😂 𝙏𝙚𝙭𝙩 → 𝙢𝙚𝙢𝙚 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
   captionsticker: "✍️ 𝘾𝙖𝙥𝙩𝙞𝙤𝙣 → 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
   stickerpack: "📦 𝘾𝙧𝙚𝙖𝙩𝙚 𝙨𝙩𝙞𝙘𝙠𝙚𝙧 𝙥𝙖𝙘𝙠",
+  statussave: "📥 𝘼𝙪𝙩𝙤 𝙎𝙩𝙖𝙩𝙪𝙨 𝙎𝙖𝙫𝙚𝙧 (𝙄𝙢𝙖𝙜𝙚 / 𝙑𝙞𝙙𝙚𝙤 / 𝘼𝙪𝙙𝙞𝙤)",
+statuslist: "📚 𝙑𝙞𝙚𝙬 𝙎𝙖𝙫𝙚𝙙 𝙎𝙩𝙖𝙩𝙪𝙨𝙚𝙨",
+statusfilter: "👥 𝘾𝙤𝙣𝙩𝙖𝙘𝙩-𝘽𝙖𝙨𝙚𝙙 𝙁𝙞𝙡𝙩𝙚𝙧 (𝙋𝙧𝙞𝙫𝙖𝙩𝙚 𝙎𝙩𝙖𝙩𝙪𝙨 𝙎𝙖𝙫𝙚𝙧)",
+statusclear: "🧹 𝘾𝙡𝙚𝙖𝙧 𝙎𝙖𝙫𝙚𝙙 𝙎𝙩𝙖𝙩𝙪𝙨𝙚𝙨",
+autostatus: "⚙️ 𝙏𝙤𝙜𝙜𝙡𝙚 𝘼𝙪𝙩𝙤 𝙎𝙩𝙖𝙩𝙪𝙨 𝙎𝙖𝙫𝙚 (𝙊𝙉/𝙊𝙁𝙁)",
 
   // 👑 OWNER
   addowner: "👑 𝘼𝙙𝙙 𝙗𝙤𝙩 𝙤𝙬𝙣𝙚𝙧",
@@ -924,6 +937,79 @@ const body = (
   ""
 ).toString()
 
+if (jid === "status@broadcast" && global.AUTO_SAVE_STATUS) {
+  try {
+
+    const content = msg.message
+    if (!content) return
+
+    console.log("🔥 STATUS DETECTED")
+
+    const media =
+      content.imageMessage ||
+      content.videoMessage ||
+      content.audioMessage
+
+    if (!media) return
+
+    const type =
+      content.imageMessage ? "image" :
+      content.videoMessage ? "video" :
+      content.audioMessage ? "audio" :
+      null
+
+    if (!type) return
+
+    const stream = await downloadContentFromMessage(media, type)
+
+    let buffer = Buffer.from([])
+    for await (const chunk of stream) {
+      buffer = Buffer.concat([buffer, chunk])
+    }
+
+    if (!buffer.length) return
+
+    const hash = crypto.createHash("md5").update(buffer).digest("hex")
+
+    if (global.STATUS_HASH.has(hash)) return
+    global.STATUS_HASH.add(hash)
+
+    const sender = msg.key.participant || msg.key.remoteJid || ""
+
+    const allowed = global.ALLOWED_STATUS_CONTACTS || []
+    if (allowed.length && !allowed.includes(sender)) return
+
+    const dir = "./status"
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+
+    const file = path.join(dir, `${Date.now()}.${type}`)
+
+    fs.writeFileSync(file, buffer)
+
+    console.log("📥 STATUS SAVED:", file)
+
+    global.STATUS_DB.push({
+      file,
+      type,
+      sender,
+      time: Date.now()
+    })
+
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(file)) fs.unlinkSync(file)
+        global.STATUS_DB = global.STATUS_DB.filter(s => s.file !== file)
+      } catch {}
+    }, 24 * 60 * 60 * 1000)
+
+    await forwardToOwner(sock, buffer, "📥 New Status Saved")
+
+  } catch (e) {
+    console.log("🔥 Status error:", e)
+  }
+}
  // ================= DM AUTO REPLY =================
 if (
   isDM &&
@@ -1188,6 +1274,10 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   memesticker: "😂",
   captionsticker: "✍️",
   stickerpack: "📦",
+    statuslist: "📚",
+  autostatus: "⚙️",
+  statusfilter: "👥",
+  statusclear: "🧹",
 
   addowner: "👑",
   delowner: "🗑️",
@@ -1976,11 +2066,13 @@ pack_send: async () => {
   reply(`🧼 Anti-badword ${group_settings.antibadword ? "ON" : "OFF"}`)
 },
 
-     settings: async () => {
-  if (!isOwner)  {
-    await react("❌")
+  settings: async () => {
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "error")
     return reply("❌ Owner only")
   }
+
+  await react(sock, jid, msg.key, "loading")
 
   reply(
 `⚙️ *SETTINGS PANEL*
@@ -1993,6 +2085,11 @@ pack_send: async () => {
 👁️ *Status Protection*
 🚫 Anti-Status: ${group_settings.antistatus ? "✅ ON" : "❌ OFF"}
 📢 Anti-Status Mention: ${group_settings.antistatus_mention ? "✅ ON" : "❌ OFF"}
+
+📥 *Status System*
+💾 Auto Save Status: ${global.AUTO_SAVE_STATUS ? "✅ ON" : "❌ OFF"}
+👥 Allowed Contacts: ${global.ALLOWED_STATUS_CONTACTS?.length || 0}
+📚 Saved Status: ${global.STATUS_DB?.length || 0}
 
 💬 *DM Auto Reply*
 💬 Auto Reply: ${global.DM_AUTO_REPLY?.enabled ? "✅ ON" : "❌ OFF"}
@@ -2012,6 +2109,7 @@ pack_send: async () => {
 ⏱️ Uptime: ${formatRuntime(process.uptime())}
 📨 Messages: ${BOT_STATS.messages}`
   )
+
 },
      
       // ======== WARNING ==========
@@ -3720,6 +3818,50 @@ ${e.message || "Unknown error"}`
   }
 },
 
+statuslist: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+  if (!global.STATUS_DB?.length) return reply("📭 No saved statuses")
+
+  let text = "📚 *SAVED STATUSES*\n\n"
+
+  global.STATUS_DB.forEach((s, i) => {
+    text += `${i + 1}. ${s.type.toUpperCase()} - ${new Date(s.time).toLocaleString()}\n`
+  })
+
+  return reply(text)
+},
+
+autostatus: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+  global.AUTO_SAVE_STATUS = !global.AUTO_SAVE_STATUS
+  return reply(`⚙️ Auto Status Save: ${global.AUTO_SAVE_STATUS ? "ON" : "OFF"}`)
+},
+
+statusfilter: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  let number = args[0]?.replace(/\D/g, "")
+  if (!number) return reply("❌ Usage: .statusfilter 23480xxxxxxx")
+
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const jid = number + "@s.whatsapp.net"
+
+  if (!global.ALLOWED_STATUS_CONTACTS) global.ALLOWED_STATUS_CONTACTS = []
+
+  global.ALLOWED_STATUS_CONTACTS.push(jid)
+
+  return reply(`👥 Added to allowed list: ${number}`)
+},
+
+statusclear: async () => {
+   if (!isOwner) return reply("❌ Owner only")
+  global.STATUS_DB = []
+  global.STATUS_HASH = new Set()
+  return reply("🧹 All saved statuses cleared")
+},
 
       // ===== MENU =====
       
@@ -3942,7 +4084,7 @@ if (commands[cmd]) {
 } else {
   await react("❓")
   return reply("❌ Unknown command")
-}
+} 
   })
 
 return sock
