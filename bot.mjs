@@ -66,6 +66,157 @@ process.on("unhandledRejection", (err) => {
 let CURRENT_QR = ""
 let reconnecting = false
 
+// ================= RUNTIME FORMATTER =================
+
+function formatRuntime(ms) {
+  if (!ms || ms < 0) return "0s"
+
+  const sec = Math.floor(ms / 1000) % 60
+  const min = Math.floor(ms / (1000 * 60)) % 60
+  const hr = Math.floor(ms / (1000 * 60 * 60))
+
+  return `${hr}h ${min}m ${sec}s`
+}
+
+// ================= DM AUTO REPLY SYSTEM (OWNER ONLY CONTROL) =================
+
+global.DM_AUTO_REPLY = global.DM_AUTO_REPLY || {
+  enabled: true,
+
+words: {
+  hello: ["Hello 👋", "Hi 😄", "Hey there 😊", "Yo 👋", "Hey buddy 😎"],
+  hi: ["Hello 😄", "Hi friend 👋", "Hey 👋", "Hi there 😊"],
+  hey: ["Hey 👋", "Hey there 😎", "Yo 😄"],
+  morning: ["Good morning ☀️", "Morning 👋", "Rise and shine 🌞"],
+  afternoon: ["Good afternoon ☀️", "Hope your day is going great 😄"],
+  evening: ["Good evening 🌆", "Evening 👋"],
+  night: ["Good night 🌙", "Sleep well 😴", "Sweet dreams ✨"],
+  bot: ["I'm here 🤖", "Yes? 👀", "Bot active ⚡"],
+  thanks: ["Welcome 😊", "No problem 👍", "Anytime 😄"],
+  thankyou: ["You're welcome 😊", "Happy to help 💙"],
+  ok: ["Alright 👍", "Okay 👌", "Sure 😄"],
+  yes: ["Nice 😎", "Alright 🔥"],
+  no: ["Okay 👌", "No problem 😄"],
+  lol: ["😂", "Haha 😆", "Lmao 🤣"],
+  bye: ["Bye 👋", "See you 😄", "Take care 💙"],
+  help: ["Type .menu for commands 📋", "Need help? Use .menu 👀"],
+
+  owner: ["👑 My owner is amazing", "👑 Respect the owner"],
+  menu: ["📋 Type .menu to explore commands"],
+  ping: ["🏓 Pong!"],
+  alive: ["💚 I'm active and running"],
+
+  love: ["❤️ Love you too", "💖 Sending love"],
+  miss: ["🥹 Aww, I’m here"],
+  sad: ["💙 Stay strong", "🥺 Hope things get better"],
+  happy: ["😄 That’s awesome!", "🎉 Nice!"],
+  angry: ["😅 Calm down", "🧘 Relax a little"],
+
+  who: ["🤖 I'm your smart bot assistant"],
+  what: ["👀 Can you explain more?"],
+  where: ["📍 Depends, tell me more"],
+  when: ["⏳ Soon maybe 😄"],
+  why: ["🤔 Good question"],
+
+  joke: ["😂 Why did the bot cross the chat? To reply you!"],
+  funny: ["🤣 You’re funny too"],
+  bored: ["🎮 Try .menu for fun commands"],
+  sleep: ["😴 Go get some rest"],
+  food: ["🍔 I wish bots could eat"],
+  hungry: ["🍕 Go grab something tasty"],
+  music: ["🎵 Music makes everything better"],
+  game: ["🎮 Games are fun"],
+  school: ["📚 Study hard"],
+  exam: ["📝 Good luck!"],
+  work: ["💼 Stay productive"],
+
+  whatsapp: ["💬 Best chat app 😎"],
+  group: ["👥 Groups can be fun"],
+  admin: ["👮 Respect admins"],
+  sticker: ["🎭 Stickers are cool"],
+  viewonce: ["👁️ I can help with that 😎"],
+
+  good: ["😄 Nice!", "🔥 Awesome"],
+  bad: ["😬 Ouch"],
+  cool: ["😎 Very cool"],
+  wow: ["😮 Wow indeed"],
+  nice: ["💯 Nice one"],
+  bro: ["😎 Bro!"],
+  sis: ["😊 Sis!"],
+  dude: ["😎 Yo dude"],
+  guy: ["👋 Hey"],
+  girl: ["😊 Hello"],
+
+  test: ["✅ Test successful"],
+  check: ["👀 Checking..."],
+  status: ["📊 Status: Active"],
+  update: ["⚡ Updated"],
+  send: ["📩 Sending..."],
+  wait: ["⏳ Please wait"],
+  fast: ["⚡ Super fast"],
+  slow: ["🐢 Taking it slow"],
+
+  nigeria: ["🇳🇬 Naija no dey carry last"],
+  lagos: ["🌆 Lagos vibes"],
+  abuja: ["🏛️ Abuja strong"],
+  africa: ["🌍 Africa to the world"],
+
+  god: ["🙏 Stay blessed"],
+  prayer: ["🙏 Amen"],
+  church: ["⛪ Blessings"],
+  bless: ["✨ Bless you"],
+
+  money: ["💸 Secure the bag"],
+  rich: ["🤑 Big money vibes"],
+  poor: ["💙 Better days ahead"],
+
+  phone: ["📱 Phones are life"],
+  android: ["🤖 Android gang"],
+  iphone: ["🍎 Premium vibes"],
+
+  internet: ["🌐 Connected"],
+  wifi: ["📶 Signal strong"],
+  network: ["📡 Stay connected"],
+
+  friend: ["😊 Friends matter"],
+  family: ["🏡 Family first"],
+  mom: ["❤️ Moms are special"],
+  dad: ["💪 Dads too"],
+
+  default: [
+    "🤖 I'm currently unavailable right now.",
+    "💬 Message received.",
+    "⚡ I'll reply soon.",
+    "👋 Thanks for your message.",
+    "📩 Your message has been noted.",
+    "😊 I’ll respond when available."
+  ]
+}}
+
+// ================= RANDOM PICKER =================
+
+function pickRandom(arr = []) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+// ================= SMART AUTO REPLY ENGINE =================
+
+function getSmartAutoReply(message = "") {
+  const text = String(message || "").toLowerCase()
+
+  if (!text) {
+    return pickRandom(global.DM_AUTO_REPLY.defaultReplies)
+  }
+
+  for (const key of Object.keys(global.DM_AUTO_REPLY.words)) {
+    if (typeof key === "string" && text.includes(key)) {
+      const arr = global.DM_AUTO_REPLY.words[key]
+      return pickRandom(arr)
+    }
+  }
+
+  return pickRandom(global.DM_AUTO_REPLY.defaultReplies)
+}
 
 // ================= CONFIG =================
 const PREFIX = "!"
@@ -259,7 +410,15 @@ const PREMIUM_MENU_SECTIONS = {
     "shutdown",
     "broadcast",
     "ban",
-    "unban"
+    "unban",
+  ],
+
+  "💬 AUTO REPLY":[
+    "autoreplyon",
+    "autoreplyoff",
+    "addreply",
+    "delreply",
+    "listreply",
   ],
 
   "⚠️ WARN": [
@@ -344,6 +503,14 @@ const COMMAND_DESCRIPTIONS = {
   broadcast: "📢 𝘽𝙧𝙤𝙖𝙙𝙘𝙖𝙨𝙩 𝙩𝙤 𝙖𝙡𝙡 𝙘𝙝𝙖𝙩𝙨",
   ban: "🚷 𝘽𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
   unban: "✅ 𝙐𝙣𝙗𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
+
+  // 💬 AUTO REPLY
+
+ autoreplyon : "💬 𝙀𝙣𝙖𝙗𝙡𝙚 𝘿𝙈 𝘼𝙪𝙩𝙤 𝙍𝙚𝙥𝙡𝙮",
+ autoreplyoff:  "🔕 𝘿𝙞𝙨𝙖𝙗𝙡𝙚 𝘿𝙈 𝘼𝙪𝙩𝙤 𝙍𝙚𝙥𝙡𝙮",
+addreply: "➕ 𝘼𝙙𝙙 𝙆𝙚𝙮𝙬𝙤𝙧𝙙 𝙍𝙚𝙥𝙡𝙮",
+delreply: "🗑️ 𝙍𝙚𝙢𝙤𝙫𝙚 𝙆𝙚𝙮𝙬𝙤𝙧𝙙 𝙍𝙚𝙥𝙡𝙮",
+ listreply: "📋 𝙑𝙞𝙚𝙬 𝘼𝙡𝙡 𝙍𝙚𝙥𝙡𝙞𝙚𝙨",
 
   // ⚠️ WARN
   warn: "⚠️ 𝙒𝙖𝙧𝙣 𝙖 𝙪𝙨𝙚𝙧",
@@ -747,13 +914,57 @@ if (isDM) {
   await sock.sendPresenceUpdate("available", jid)
 }
 
-const body =
+const body = (
   msg.message?.conversation ||
   msg.message?.extendedTextMessage?.text ||
   msg.message?.imageMessage?.caption ||
   msg.message?.videoMessage?.caption ||
+  msg.message?.buttonsResponseMessage?.selectedButtonId ||
+  msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
   ""
+).toString()
 
+ // ================= DM AUTO REPLY =================
+if (
+  isDM &&
+  !isOwner &&
+  !isBot &&
+  global.DM_AUTO_REPLY.enabled
+) {
+  try {
+    // ❌ Ignore commands
+    if (!body.startsWith(PREFIX)) {
+
+      global.LAST_DM_REPLY =
+        global.LAST_DM_REPLY || {}
+
+      const now = Date.now()
+      const cooldown = 15000 // 15s anti-spam
+
+      if (
+        !global.LAST_DM_REPLY[sender] ||
+        now - global.LAST_DM_REPLY[sender] > cooldown
+      ) {
+        const autoReply =
+          getSmartAutoReply(body)
+
+        await sock.sendMessage(
+          jid,
+          { text: autoReply },
+          { quoted: msg }
+        )
+
+        global.LAST_DM_REPLY[sender] = now
+      }
+    }
+
+  } catch (e) {
+    console.log(
+      "Smart DM Auto Reply Error:",
+      e
+    )
+  }
+}
 
 const reply = async (text) => {
   try {
@@ -959,7 +1170,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   hidetag: "👻",
   tagonline: "🟢",
   delete: "🧼",
-  del: "🚮",
+  remove: "🚮",
 
   setname: "✏️",
   setdesc: "📝",
@@ -987,6 +1198,12 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   ban: "🚷",
   unban: "✅",
 
+  autoreplyon: "💬",
+  autoreplyoff: "🔕",
+  addreply: "➕",
+  delreply: "🗑️",
+
+  default: "⚡",
 
   warn: "⚠️",
   warnlist: "📋",
@@ -1777,12 +1994,23 @@ pack_send: async () => {
 🚫 Anti-Status: ${group_settings.antistatus ? "✅ ON" : "❌ OFF"}
 📢 Anti-Status Mention: ${group_settings.antistatus_mention ? "✅ ON" : "❌ OFF"}
 
+💬 *DM Auto Reply*
+💬 Auto Reply: ${global.DM_AUTO_REPLY?.enabled ? "✅ ON" : "❌ OFF"}
+
 🔐 *Bot Mode*
 ⚙️ Mode: ${String(settings.mode || "public").toUpperCase()}
 
+👑 *Owner Controls*
+👑 Owners: ${BOT_OWNERS.length}
+🚷 Banned Users: ${global.BANNED_USERS ? Object.keys(global.BANNED_USERS).length : 0}
+
 📊 *System*
 👥 Group: ${isGroup ? "✅ Group Chat" : "❌ Private Chat"}
-👑 Your Role: ${isOwner ? "Bot Owner" : isAdmin ? "Group Admin" : "Member"}`
+👑 Your Role: ${isOwner ? "Bot Owner" : isAdmin ? "Group Admin" : "Member"}
+
+⚡ *Runtime*
+⏱️ Uptime: ${formatRuntime(process.uptime())}
+📨 Messages: ${BOT_STATS.messages}`
   )
 },
      
@@ -1949,7 +2177,7 @@ addowner: async () => {
 
   let number = args[0]?.replace(/\D/g, "")
   if (!number) {
-    return reply("❌ Usage: .addowner 2348012345678")
+    return reply("❌ Usage: !addowner 2348012345678")
   }
 
   // Auto-fix Nigerian local format
@@ -1974,7 +2202,7 @@ delowner: async () => {
 
   let number = args[0]?.replace(/\D/g, "")
   if (!number) {
-    return reply("❌ Usage: .delowner 2348012345678")
+    return reply("❌ Usage: !delowner 2348012345678")
   }
 
   // Auto-fix Nigerian local format
@@ -2006,6 +2234,72 @@ owners: async () => {
    if (!BOT_OWNERS.length) {
     return reply("❌ No owners found")
    }
+},
+
+// ====== AUTO REPLY=======
+
+autoreplyon: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  global.DM_AUTO_REPLY.enabled = true
+  reply("💬 Auto Reply Enabled ✅")
+},
+
+autoreplyoff: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  global.DM_AUTO_REPLY.enabled = false
+  reply("🔕 Auto Reply Disabled ❌")
+},
+
+
+addreply: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  const [keyword, ...msgParts] = args
+  const message = msgParts.join(" ")
+
+  if (!keyword || !message) {
+    return reply("❌ Usage: .addreply hello Hi there 👋")
+  }
+
+  if (!global.DM_AUTO_REPLY.words[keyword]) {
+    global.DM_AUTO_REPLY.words[keyword] = []
+  }
+
+  global.DM_AUTO_REPLY.words[keyword].push(message)
+
+  return reply(`✅ Added reply for "${keyword}"`)
+},
+
+delreply: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  const keyword = args[0]
+
+  if (!keyword) return reply("❌ Usage: .delreply hello")
+
+  delete global.DM_AUTO_REPLY.words[keyword]
+
+  return reply(`🗑️ Deleted replies for "${keyword}"`)
+},
+
+listreply: async () => {
+  if (!isOwner) return reply("❌ Owner only")
+
+  let text = "💬 *AUTO REPLY LIST*\n\n"
+
+  for (const key in global.DM_AUTO_REPLY.words) {
+    text += `🔹 ${key}:\n`
+
+    global.DM_AUTO_REPLY.words[key].forEach((r, i) => {
+      text += `   ${i + 1}. ${r}\n`
+    })
+
+    text += "\n"
+  }
+
+  reply(text)
 },
 
    restart: async () => {
@@ -2687,14 +2981,17 @@ revoke: async () => {
 // ================= ADD USER =================
 add: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-
-  let number = args[0]?.replace(/\D/g, "") // removes +, spaces, etc.
-  if (!number) {
-    return reply("❌ Usage: .add 2348012345678")
+  if (!isAdmin && !isOwner) {
+    return reply("❌ Admin or Bot owner only")
   }
 
-  // Auto-fix Nigerian local format (080... → 23480...)
+  let number = args[0]?.replace(/\D/g, "") // removes +, spaces, etc.
+
+  if (!number) {
+    return reply("❌ Usage: !add 2348012345678")
+  }
+
+  // 🇳🇬 Auto-fix Nigerian local format
   if (number.startsWith("0")) {
     number = "234" + number.slice(1)
   }
@@ -2702,24 +2999,104 @@ add: async () => {
   const user = number + "@s.whatsapp.net"
 
   try {
-    await sock.groupParticipantsUpdate(jid, [user], "add")
-    reply(`✅ Added ${number} to the group`)
+    // 👥 Add user directly
+    const result = await sock.groupParticipantsUpdate(
+      jid,
+      [user],
+      "add"
+    )
+
+    // 📊 Optional group name
+    const meta = await sock.groupMetadata(jid)
+    const groupName = meta.subject || "WhatsApp Group"
+
+    // ✅ Success message
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`➕ *USER ADDED*
+
+👤 User: @${number}
+🏷️ Group: ${groupName}
+👑 Added By: @${sender.split("@")[0]}
+✅ Status: Successful`,
+        mentions: [user, sender]
+      },
+      { quoted: msg }
+    )
+
   } catch (e) {
+
     console.log("Add error:", e)
-    reply(`❌ Failed to add ${number}`)
+
+    // ❌ Fallback if privacy blocks direct add
+    try {
+      const code = await sock.groupInviteCode(jid)
+      const link = `https://chat.whatsapp.com/${code}`
+
+      await sock.sendMessage(
+        user,
+        {
+          text:
+`👋 *GROUP INVITATION*
+
+🏷️ You couldn't be added directly due to privacy settings.
+
+🔗 Join Here:
+${link}
+
+👑 Invited By: @${sender.split("@")[0]}`,
+          mentions: [sender]
+        }
+      )
+
+      await sock.sendMessage(
+        jid,
+        {
+          text:
+`⚠️ *DIRECT ADD FAILED — INVITE SENT*
+
+👤 User: @${number}
+👑 By: @${sender.split("@")[0]}
+📩 Private invite link sent instead`,
+          mentions: [user, sender]
+        },
+        { quoted: msg }
+      )
+
+    } catch {
+
+      await sock.sendMessage(
+        jid,
+        {
+          text:
+`❌ *ADD FAILED*
+
+👤 User: @${number}
+👑 By: @${sender.split("@")[0]}
+⚠️ Could not add or invite user`,
+          mentions: [user, sender]
+        },
+        { quoted: msg }
+      )
+    }
   }
 },
 
 invite: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-
-  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
-  if (!number) {
-    return reply("❌ Usage: .invite 2348012345678")
+  if (!isAdmin && !isOwner) {
+    return reply("❌ Admin or Bot owner only")
   }
 
-  // Auto-fix local Nigerian format (080... → 23480...)
+  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+
+  if (!number) {
+    return reply("❌ Usage: !invite 2348012345678")
+  }
+
+  // 🇳🇬 Auto-fix Nigerian local format
   if (number.startsWith("0")) {
     number = "234" + number.slice(1)
   }
@@ -2727,64 +3104,237 @@ invite: async () => {
   const target = number + "@s.whatsapp.net"
 
   try {
+    // 🔗 Get fresh group invite code
     const code = await sock.groupInviteCode(jid)
-    const link = "https://chat.whatsapp.com/" + code
+    const link = `https://chat.whatsapp.com/${code}`
 
-    await sock.sendMessage(target, {
-      text: `👋 You are invited to join this group:\n\n🔗 ${link}`
-    })
+    // 👥 Group metadata
+    const meta = await sock.groupMetadata(jid)
+    const groupName = meta.subject || "WhatsApp Group"
 
-    reply(`✅ Invite link sent to ${number}`)
+    // 📩 Send invite privately
+    await sock.sendMessage(
+      target,
+      {
+        text:
+`👋 *GROUP INVITATION*
+
+🏷️ Group: ${groupName}
+👑 Invited By: @${sender.split("@")[0]}
+
+🔗 Join Link:
+${link}
+
+⚡ Powered by Bot`,
+        mentions: [sender]
+      }
+    )
+
+    // ✅ Confirm publicly
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`🔗 *INVITE SENT*
+
+📩 User: @${number}
+🏷️ Group: ${groupName}
+👑 By: @${sender.split("@")[0]}
+✅ Status: Successful`,
+        mentions: [target, sender]
+      },
+      { quoted: msg }
+    )
+
   } catch (e) {
+
     console.log("Invite error:", e)
-    reply(`❌ Failed to send invite to ${number}`)
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`❌ *INVITE FAILED*
+
+📩 User: @${number}
+👑 By: @${sender.split("@")[0]}
+⚠️ Could not send invite link`,
+        mentions: [target, sender]
+      },
+      { quoted: msg }
+    )
   }
 },
 
 // ================= KICK USER =================
  kick: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isOwner && !isAdmin) return reply("❌ Owner only")
+  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner && !isAdmin) return reply("❌ Owner/Admin only")
 
-          let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+
   if (!number) {
-    return reply("❌ Usage: .kick 2348012345678")
+    return reply("❌ Usage: !kick 2348012345678")
   }
 
-  // Auto-fix local Nigerian format (080... → 23480...)
+  // 🇳🇬 Auto-fix local Nigerian format
   if (number.startsWith("0")) {
-    const number = "234" + number.slice(1)
+    number = "234" + number.slice(1)
   }
 
-        const user = number + "@s.whatsapp.net"
+  const user = number + "@s.whatsapp.net"
 
-       try {
-    await sock.groupParticipantsUpdate(jid, [user], "remove")
-    reply(`✅ Removed ${number} from the group`)
+  try {
+    await sock.groupParticipantsUpdate(
+      jid,
+      [user],
+      "remove"
+    )
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`👢 *USER REMOVED*
+
+🚫 User: @${number}
+👑 By: @${sender.split("@")[0]}
+📛 Action: Kick Successful`,
+        mentions: [user, sender]
+      },
+      { quoted: msg }
+    )
+
   } catch (e) {
+
     console.log("Remove error:", e)
-    reply(`❌ Failed to remove ${number}`)
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`❌ *KICK FAILED*
+
+🚫 User: @${number}
+⚠️ Reason: Could not remove user
+👑 By: @${sender.split("@")[0]}`,
+        mentions: [user, sender]
+      },
+      { quoted: msg }
+    )
   }
 },
 
 
 // ================= PROMOTE USER =================
 
-      promote: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-        const target = getTarget()
-        await sock.groupParticipantsUpdate(jid, [target], "promote")
-        return reply(" Added as Admin 👮")
-      },
+     promote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) {
+    return reply("❌ Admin or Bot owner only")
+  }
 
-      demote: async () => {
-        if (!isGroup) return reply("❌ Group only")
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-        const target = getTarget()
-        await sock.groupParticipantsUpdate(jid, [target], "demote")
-        return reply(" Removed as Admin 👮")
+  const target = getTarget()
+
+  if (!target) {
+    return reply("❌ Reply to or mention a user")
+  }
+
+  try {
+    await sock.groupParticipantsUpdate(
+      jid,
+      [target],
+      "promote"
+    )
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`⬆️ *USER PROMOTED*
+
+👤 User: @${target.split("@")[0]}
+👮 New Role: Group Admin
+👑 Promoted By: @${sender.split("@")[0]}
+✅ Status: Successful`,
+        mentions: [target, sender]
       },
+      { quoted: msg }
+    )
+
+  } catch (e) {
+
+    console.log("Promote error:", e)
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`❌ *PROMOTION FAILED*
+
+👤 User: @${target.split("@")[0]}
+👑 Attempted By: @${sender.split("@")[0]}
+⚠️ Could not promote user`,
+        mentions: [target, sender]
+      },
+      { quoted: msg }
+    )
+  }
+},
+
+demote: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isAdmin && !isOwner) {
+    return reply("❌ Admin or Bot owner only")
+  }
+
+  const target = getTarget()
+
+  if (!target) {
+    return reply("❌ Reply to or mention a user")
+  }
+
+  try {
+    await sock.groupParticipantsUpdate(
+      jid,
+      [target],
+      "demote"
+    )
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`⬇️ *USER DEMOTED*
+
+👤 User: @${target.split("@")[0]}
+👮 Role Removed: Admin
+👑 Demoted By: @${sender.split("@")[0]}
+✅ Status: Successful`,
+        mentions: [target, sender]
+      },
+      { quoted: msg }
+    )
+
+  } catch (e) {
+
+    console.log("Demote error:", e)
+
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+`❌ *DEMOTION FAILED*
+
+👤 User: @${target.split("@")[0]}
+👑 Attempted By: @${sender.split("@")[0]}
+⚠️ Could not demote user`,
+        mentions: [target, sender]
+      },
+      { quoted: msg }
+    )
+  }
+},
 
 
 
@@ -2960,7 +3510,7 @@ delete: async () => {
   }
 },
 
-del: async () => {
+remove: async () => {
   if (!isOwner) return reply("❌ Bot owner only")
 
   const quoted = msg.message?.extendedTextMessage?.contextInfo
@@ -2978,6 +3528,7 @@ del: async () => {
 
   try {
     await sock.sendMessage(jid, { delete: key })
+    reply("🗑️ Message removed")
   } catch (e) {
     console.log(e)
     reply("❌ Cannot delete (WhatsApp limitation)")
