@@ -850,7 +850,7 @@ saveOwners()
               try{
                 sock.sendPresenceUpdate("unavailable")
               }catch{}
-              }, 6000)
+              }, 1000)
           }
   
         if (connection === "close") {
