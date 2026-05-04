@@ -419,6 +419,7 @@ const PREMIUM_MENU_SECTIONS = {
     "broadcast",
     "ban",
     "unban",
+    "banned",
   ],
 
   "💬 AUTO REPLY":[
@@ -514,8 +515,9 @@ autostatus: "⚙️ 𝙏𝙤𝙜𝙜𝙡𝙚 𝘼𝙪𝙩𝙤 𝙎𝙩𝙖𝙩�
   restart: "🔄 𝙍𝙚𝙨𝙩𝙖𝙧𝙩 𝙗𝙤𝙩",
   shutdown: "⛔ 𝙎𝙝𝙪𝙩𝙙𝙤𝙬𝙣 𝙗𝙤𝙩",
   broadcast: "📢 𝘽𝙧𝙤𝙖𝙙𝙘𝙖𝙨𝙩 𝙩𝙤 𝙖𝙡𝙡 𝙘𝙝𝙖𝙩𝙨",
-  ban: "🚷 𝘽𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
-  unban: "✅ 𝙐𝙣𝙗𝙡𝙤𝙘𝙠 𝙪𝙨𝙚𝙧",
+ ban: "🚷 𝘽𝙡𝙤𝙘𝙠 & 𝘽𝙖𝙣 𝘾𝙤𝙣𝙩𝙖𝙘𝙩 (𝘿𝙈)",
+unban: "✅ 𝙐𝙣𝙗𝙡𝙤𝙘𝙠 & 𝙐𝙣𝙗𝙖𝙣 𝘾𝙤𝙣𝙩𝙖𝙘𝙩",
+banned: "📋 𝙑𝙞𝙚𝙬 𝘽𝙖𝙣𝙣𝙚𝙙 𝙐𝙨𝙚𝙧𝙨",
 
   // 💬 AUTO REPLY
 
@@ -1287,6 +1289,7 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   broadcast: "📢",
   ban: "🚷",
   unban: "✅",
+  banned: "📋",
 
   autoreplyon: "💬",
   autoreplyoff: "🔕",
@@ -2094,12 +2097,15 @@ pack_send: async () => {
 💬 *DM Auto Reply*
 💬 Auto Reply: ${global.DM_AUTO_REPLY?.enabled ? "✅ ON" : "❌ OFF"}
 
+🚷 *Ban System*
+🚷 Banned Users: ${global.BANNED_USERS ? Object.keys(global.BANNED_USERS).length : 0}
+🔒 Block Sync: ${global.BLOCK_SYNC ? "✅ ON" : "❌ OFF"}
+
 🔐 *Bot Mode*
 ⚙️ Mode: ${String(settings.mode || "public").toUpperCase()}
 
 👑 *Owner Controls*
 👑 Owners: ${BOT_OWNERS.length}
-🚷 Banned Users: ${global.BANNED_USERS ? Object.keys(global.BANNED_USERS).length : 0}
 
 📊 *System*
 👥 Group: ${isGroup ? "✅ Group Chat" : "❌ Private Chat"}
@@ -2107,9 +2113,15 @@ pack_send: async () => {
 
 ⚡ *Runtime*
 ⏱️ Uptime: ${formatRuntime(process.uptime())}
-📨 Messages: ${BOT_STATS.messages}`
+📨 Messages: ${BOT_STATS.messages}
+
+🗂️ *Database*
+📚 Status DB: ${global.STATUS_DB?.length || 0}
+🚷 Ban DB: ${global.BANNED_USERS ? Object.keys(global.BANNED_USERS).length : 0}
+👥 Owners DB: ${BOT_OWNERS.length}`
   )
 
+  await react(sock, jid, msg.key, "success")
 },
      
       // ======== WARNING ==========
@@ -2494,36 +2506,124 @@ broadcast: async () => {
 
 // ================= BAN USER =================
 ban: async () => {
-  if (!isOwner) return reply("❌ Owner only")
-
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
-
-  if (!SETTINGS.banned) SETTINGS.banned = []
-
-  if (!SETTINGS.banned.includes(target)) {
-    SETTINGS.banned.push(target)
-    saveSettings()
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "error")
+    return reply("❌ Owner only")
   }
 
-  reply(`🚷 User banned:\n@${target.split("@")[0]}`)
+  await react(sock, jid, msg.key, "loading")
+
+  let number =
+    args[0]?.replace(/\D/g, "") ||
+    msg.message?.extendedTextMessage?.contextInfo?.participant?.split("@")[0]
+
+  if (!number) {
+    await react(sock, jid, msg.key, "error")
+    return reply("❌ Usage: .ban 2348012345678 or reply to a user")
+  }
+
+  // 🇳🇬 Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
+
+  const target = number + "@s.whatsapp.net"
+
+  if (!global.BANNED_USERS) global.BANNED_USERS = {}
+
+  if (global.BANNED_USERS[target]) {
+    await react(sock, jid, msg.key, "warn")
+    return reply(`⚠️ ${number} is already banned`)
+  }
+
+  global.BANNED_USERS[target] = {
+    bannedBy: sender,
+    time: Date.now()
+  }
+
+  // 🚫 Block in DM
+  try {
+    await sock.updateBlockStatus(target, "block")
+  } catch (e) {
+    console.log("Block sync error:", e)
+  }
+
+  await react(sock, jid, msg.key, "ban")
+
+  reply(`🚷 Blocked & banned ${number} from using the bot`)
 },
 
 unban: async () => {
-  if (!isOwner) return reply("❌ Owner only")
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "error")
+    return reply("❌ Owner only")
+  }
 
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("❌ Mention user")
+  await react(sock, jid, msg.key, "loading")
 
-  if (!SETTINGS.banned) SETTINGS.banned = []
+  let number =
+    args[0]?.replace(/\D/g, "") ||
+    msg.message?.extendedTextMessage?.contextInfo?.participant?.split("@")[0]
 
-  SETTINGS.banned = SETTINGS.banned.filter(
-    u => normalizeJid(u) !== target
-  )
+  if (!number) {
+    await react(sock, jid, msg.key, "error")
+    return reply("❌ Usage: .unban 2348012345678 or reply to a user")
+  }
 
-  saveSettings()
+  // 🇳🇬 Auto-fix Nigerian local format
+  if (number.startsWith("0")) {
+    number = "234" + number.slice(1)
+  }
 
-  reply(`✅ User unbanned:\n@${target.split("@")[0]}`)
+  const target = number + "@s.whatsapp.net"
+
+  if (!global.BANNED_USERS || !global.BANNED_USERS[target]) {
+    await react(sock, jid, msg.key, "warn")
+    return reply(`⚠️ ${number} is not banned`)
+  }
+
+  delete global.BANNED_USERS[target]
+
+  // ✅ Unblock in DM
+  try {
+    await sock.updateBlockStatus(target, "unblock")
+  } catch (e) {
+    console.log("Unblock sync error:", e)
+  }
+
+  await react(sock, jid, msg.key, "success")
+
+  reply(`✅ Unblocked & unbanned ${number}`)
+},
+
+banned: async () => {
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "error")
+    return reply("❌ Owner only")
+  }
+
+  await react(sock, jid, msg.key, "loading")
+
+  const banned = global.BANNED_USERS || {}
+  const users = Object.keys(banned)
+
+  if (!users.length) {
+    await react(sock, jid, msg.key, "info")
+    return reply("📭 No banned users")
+  }
+
+  let text = "🚷 *BANNED USERS LIST*\n\n"
+
+  users.forEach((user, i) => {
+    text += `${i + 1}. @${user.split("@")[0]}\n`
+  })
+
+  await react(sock, jid, msg.key, "success")
+
+  return sock.sendMessage(jid, {
+    text,
+    mentions: users
+  })
 },
 
 
