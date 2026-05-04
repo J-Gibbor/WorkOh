@@ -395,5 +395,12 @@
     "antilink": false,
     "antistatus": false,
     "antistatus_mention": false
+  },
+  "233027779186910@lid": {
+    "antidelete": false,
+    "antibadword": false,
+    "antilink": false,
+    "antistatus": false,
+    "antistatus_mention": false
   }
 }
