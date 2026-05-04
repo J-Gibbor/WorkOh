@@ -85,7 +85,7 @@ function formatRuntime(ms) {
 // ================= DM AUTO REPLY SYSTEM (OWNER ONLY CONTROL) =================
 
 global.DM_AUTO_REPLY = global.DM_AUTO_REPLY || {
-  enabled: true,
+  enabled: false,
 
 words: {
   hello: ["Hello 👋", "Hi 😄", "Hey there 😊", "Yo 👋", "Hey buddy 😎"],
