@@ -160,12 +160,12 @@ words: {
   fast: ["⚡ Super fast"],
   slow: ["🐢 Taking it slow"],
 
-  nigeria: ["🇳🇬 Naija no dey carry last"],
-  lagos: ["🌆 Lagos vibes"],
-  abuja: ["🏛️ Abuja strong"],
-  africa: ["🌍 Africa to the world"],
+  Nigeria: ["🇳🇬 Naija no dey carry last"],
+  Lagos: ["🌆 Lagos vibes"],
+  Abuja: ["🏛️ Abuja strong"],
+  Africa: ["🌍 Africa to the world"],
 
-  god: ["🙏 Stay blessed"],
+  God: ["🙏 Stay blessed"],
   prayer: ["🙏 Amen"],
   church: ["⛪ Blessings"],
   bless: ["✨ Bless you"],
@@ -185,7 +185,7 @@ words: {
   friend: ["😊 Friends matter"],
   family: ["🏡 Family first"],
   mom: ["❤️ Moms are special"],
-  dad: ["💪 Dads too"],
+  dad: ["💪 Dads provides for the family"],
 
   default: [
     "🤖 I'm currently unavailable right now.",
