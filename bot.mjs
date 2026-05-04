@@ -4167,9 +4167,6 @@ ${getGreeting()}, *${userName}* 👋
 👑 Owners: ${BOT_OWNERS.length}
 📊 Messages: ${BOT_STATS.messages}
 ⚡ Runtime: ${uptime}
-💾 RAM: ${memory} MB
-🧠 Total: ${totalRAM} GB
-🧹 Free: ${freeRAM} GB
 🛠️ Mode: ${settings?.mode || "public"}
 🔰 Prefix: ${PREFIX}
 
