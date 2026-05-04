@@ -420,6 +420,8 @@ const PREMIUM_MENU_SECTIONS = {
     "ban",
     "unban",
     "banned",
+    "block",
+    "unblock",
   ],
 
   "💬 AUTO REPLY":[
