@@ -85,7 +85,7 @@ function formatRuntime(ms) {
 // ================= DM AUTO REPLY SYSTEM (OWNER ONLY CONTROL) =================
 
 global.DM_AUTO_REPLY = global.DM_AUTO_REPLY || {
-  enabled: false,
+  enabled: true,
 
 words: {
   hello: ["Hello 👋", "Hi 😄", "Hey there 😊", "Yo 👋", "Hey buddy 😎"],
@@ -105,7 +105,7 @@ words: {
   bye: ["Bye 👋", "See you 😄", "Take care 💙"],
   help: ["Type .menu for commands 📋", "Need help? Use .menu 👀"],
 
-  owner: ["👑 My owner is amazing", "👑 Respect the owner"],
+  owner: ["👑 My owner is amazing", "👑 Respect the owner", "I was created by Gibbor AKA GibborLee🧠"],
   menu: ["📋 Type .menu to explore commands"],
   ping: ["🏓 Pong!"],
   alive: ["💚 I'm active and running"],
