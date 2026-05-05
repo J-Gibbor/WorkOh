@@ -3755,40 +3755,35 @@ approveall: async () => {
   try {
     const requests = await sock.groupRequestParticipantsList(jid)
 
+    console.log("JOIN REQUESTS:", requests)
+
     if (!requests || requests.length === 0) {
       await react(sock, jid, msg.key, "📭")
       return reply("❌ No pending join requests")
     }
 
-    const users = requests
-      .map(u => normalizeJid(u.jid))
-      .filter(Boolean)
+    // ✅ FIX: handle multiple possible structures
+    const users = requests.map(r => {
+      return normalizeJid(r.jid || r || r.participant)
+    }).filter(Boolean)
 
-    if (!users.length) {
+    if (users.length === 0) {
       await react(sock, jid, msg.key, "⚠️")
-      return reply("❌ No valid pending requests found")
+      return reply("❌ No valid requests found")
     }
 
     await sock.groupRequestParticipantsUpdate(jid, users, "approve")
 
-    // ✅ Success reaction options:
-    // ✅ = approved
-    // 🎉 = batch success
-    // 🚀 = mass approval
     await react(sock, jid, msg.key, "🎉")
 
     reply(`✅ Approved ${users.length} join request(s)`)
 
   } catch (e) {
-    console.log("ApproveAll error:", e.message)
+    console.log("ApproveAll Error FULL:", e)
 
-    // ❌ Failure reaction options:
-    // ❌ = failed
-    // ⚠️ = issue
-    // 🚫 = denied
     await react(sock, jid, msg.key, "❌")
 
-    reply("❌ Failed to approve requests (maybe join approval is OFF)")
+    reply("❌ Failed (check logs or join approval setting)")
   }
 },
 
@@ -3878,13 +3873,20 @@ rejectall: async () => {
   try {
     const requests = await sock.groupRequestParticipantsList(jid)
 
+    console.log("REJECT REQUESTS:", requests)
+
     if (!requests || requests.length === 0) {
       await react(sock, jid, msg.key, "📭")
       return reply("❌ No pending join requests")
     }
 
-    const users = requests
-      .map(u => normalizeJid(u.jid))
+    // ✅ SAFE EXTRACTION (handles all Baileys formats)
+    const users = (requests || [])
+      .map(r => {
+        if (typeof r === "string") return r
+        return r?.jid || r?.participant || r
+      })
+      .map(normalizeJid)
       .filter(Boolean)
 
     if (!users.length) {
@@ -3894,23 +3896,16 @@ rejectall: async () => {
 
     await sock.groupRequestParticipantsUpdate(jid, users, "reject")
 
-    // 🚫 Success reject-all reaction options:
-    // 🚫 = mass rejected
-    // ❌ = all denied
-    // ⛔ = blocked batch
     await react(sock, jid, msg.key, "🚫")
 
     reply(`❌ Rejected ${users.length} join request(s)`)
 
   } catch (e) {
-    console.log("RejectAll error:", e.message)
+    console.log("RejectAll Error FULL:", e)
 
-    // ⚠️ Failure reaction options:
-    // ⚠️ = issue
-    // ❌ = failed
     await react(sock, jid, msg.key, "⚠️")
 
-    reply("❌ Failed to reject requests (maybe join approval is OFF)")
+    reply("❌ Failed (check logs or join approval setting)")
   }
 },
 
