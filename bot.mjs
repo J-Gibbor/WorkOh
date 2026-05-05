@@ -387,6 +387,14 @@ const PREMIUM_MENU_SECTIONS = {
     "mutelist"
   ],
 
+  "🖇️ JOIN REQUESTS":[
+    "approve",
+    "approveall",
+    "reject",
+    "rejectall",
+    "requests"
+  ],
+
   "🕒 SCHEDULE": [
     "setopen",
     "setclose",
@@ -486,6 +494,13 @@ const COMMAND_DESCRIPTIONS = {
   unmute: "🔊 𝙐𝙣𝙢𝙪𝙩𝙚 𝙖 𝙪𝙨𝙚𝙧",
   mutelist: "📋 𝙑𝙞𝙚𝙬 𝙢𝙪𝙩𝙚𝙙 𝙪𝙨𝙚𝙧𝙨",
 
+  //🖇️  JOIN REQUESTS
+  approve: "✅ 𝘼𝙥𝙥𝙧𝙤𝙫𝙚 𝙟𝙤𝙞𝙣 𝙧𝙚𝙦𝙪𝙚𝙨𝙩",
+  approveall: "🎉 𝘼𝙥𝙥𝙧𝙤𝙫𝙚 𝙖𝙡𝙡 𝙟𝙤𝙞𝙣 𝙧𝙚𝙦𝙪𝙚𝙨𝙩𝙨",
+  reject: "🚫 𝙍𝙚𝙟𝙚𝙘𝙩 𝙟𝙤𝙞𝙣 𝙧𝙚𝙦𝙪𝙚𝙨𝙩",
+  rejectall: "⛔ 𝙍𝙚𝙟𝙚𝙘𝙩 𝙖𝙡𝙡 𝙟𝙤𝙞𝙣 𝙧𝙚𝙦𝙪𝙚𝙨𝙩𝙨",
+  requests: "📨 𝙑𝙞𝙚𝙬 𝙥𝙚𝙣𝙙𝙞𝙣𝙜 𝙧𝙚𝙦𝙪𝙚𝙨𝙩𝙨",
+
   // 🕒 SCHEDULE
   setopen: "🌅 𝙎𝙚𝙩 𝙙𝙖𝙞𝙡𝙮 𝙤𝙥𝙚𝙣 𝙩𝙞𝙢𝙚",
   setclose: "🌙 𝙎𝙚𝙩 𝙙𝙖𝙞𝙡𝙮 𝙘𝙡𝙤𝙨𝙚 𝙩𝙞𝙢𝙚",
@@ -498,6 +513,7 @@ const COMMAND_DESCRIPTIONS = {
   vv: "👁️ 𝙍𝙚𝙘𝙤𝙫𝙚𝙧 𝙫𝙞𝙚𝙬-𝙤𝙣𝙘𝙚",
   pp: "🖼️ 𝙃𝘿 𝙥𝙧𝙤𝙛𝙞𝙡𝙚 𝙥𝙞𝙘",
   sticker: "🎭 𝘾𝙤𝙣𝙫𝙚𝙧𝙩 𝙞𝙢𝙖𝙜𝙚 𝙩𝙤 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
+  take: "✍️ 𝘾𝙪𝙨𝙩𝙤𝙢 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
   stickergif: "🎬 𝙑𝙞𝙙𝙚𝙤 → 𝙖𝙣𝙞𝙢𝙖𝙩𝙚𝙙 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
   memesticker: "😂 𝙏𝙚𝙭𝙩 → 𝙢𝙚𝙢𝙚 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
   captionsticker: "✍️ 𝘾𝙖𝙥𝙩𝙞𝙤𝙣 → 𝙨𝙩𝙞𝙘𝙠𝙚𝙧",
@@ -543,11 +559,14 @@ delreply: "🗑️ 𝙍𝙚𝙢𝙤𝙫𝙚 𝙆𝙚𝙮𝙬𝙤𝙧𝙙 𝙍�
   packsend: "🎲 𝙍𝙖𝙣𝙙𝙤𝙢 𝙥𝙖𝙘𝙠 𝙨𝙚𝙣𝙙",
 
   // ℹ️ INFO
+  menu: "📜 𝘿𝙞𝙨𝙥𝙡𝙖𝙮 𝙛𝙪𝙡𝙡 𝙗𝙤𝙩 𝙢𝙚𝙣𝙪",
+  help: "❓ 𝙂𝙚𝙩 𝙘𝙤𝙢𝙢𝙖𝙣𝙙 𝙜𝙪𝙞𝙙𝙚",
   mode: "⚙️ 𝙎𝙬𝙞𝙩𝙘𝙝 𝙗𝙤𝙩 𝙢𝙤𝙙𝙚",
   alive: "💚 𝘾𝙝𝙚𝙘𝙠 𝙗𝙤𝙩 𝙨𝙩𝙖𝙩𝙪𝙨",
   whoami: "🆔 𝙎𝙝𝙤𝙬 𝙮𝙤𝙪𝙧 𝙄𝘿",
   stats: "📊 𝘽𝙤𝙩 𝙪𝙨𝙖𝙜𝙚 𝙨𝙩𝙖𝙩𝙨",
-  ping: "🏓 𝘾𝙝𝙚𝙘𝙠 𝙨𝙥𝙚𝙚𝙙"
+  ping: "🏓 𝘾𝙝𝙚𝙘𝙠 𝙨𝙥𝙚𝙚𝙙",
+  runtime: "⏱️ 𝙎𝙚𝙚 𝙗𝙤𝙩 𝙪𝙥𝙩𝙞𝙢𝙚",
 }
 
 
@@ -1097,7 +1116,7 @@ const reply = async (text) => {
     const links = ["http", "wa.me", ".com", ".net", "chat.whatsapp.com"]
 
     if (links.some(l => body.toLowerCase().includes(l))) {
-      if (!isAdmin && !isOwner) {
+      if (!isOwner) {
 
         await sock.sendMessage(jid, { delete: msg.key })
 
@@ -1140,7 +1159,7 @@ const reply = async (text) => {
     const badwords = ["fuck", "shit", "bitch", "asshole"]
 
     if (badwords.some(w => body.toLowerCase().includes(w))) {
-      if (!isAdmin && !isOwner) {
+      if (!isOwner) {
 
         await sock.sendMessage(jid, { delete: msg.key })
 
@@ -1266,10 +1285,13 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   lock: "🔒",
   unlock: "🔓",
 
+  requests:"📨",
+
   getstatus: "📥",
   vv: "👁️",
   pp: "🖼️",
   sticker: "🎭",
+  take: "✍️",
   stickergif: "🎬",
   memesticker: "😂",
   captionsticker: "✍️",
@@ -1301,6 +1323,8 @@ if (isGroup && (group_settings.antistatus || group_settings.antistatus_mention))
   warninfo: "👤",
   unwarn: "🧹",
 
+  help:"❓",
+  runtime:"🕒",
   mode: "⚙️",
   alive: "💚",
   whoami: "🆔",
@@ -1560,6 +1584,67 @@ if (isDM) {
   await sock.sendMessage(jid, {
     sticker: stickerBuffer
   }, { quoted: msg })
+},
+
+take: async () => {
+  const packname = args[0]
+  const author = args.slice(1).join(" ")
+
+  if (!packname || !author) {
+    await react(sock, jid, msg.key, "❓")
+    return reply(`❌ Example: ${prefix}take Packname Author`)
+  }
+
+  const quoted =
+    msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+
+  if (!quoted || !quoted.stickerMessage) {
+    await react(sock, jid, msg.key, "🖼️")
+    return reply("❌ Reply to a sticker")
+  }
+
+  await react(sock, jid, msg.key, "⏳")
+
+  try {
+    const media = await downloadMediaMessage(
+      {
+        key: msg.message.extendedTextMessage.contextInfo.stanzaId
+          ? {
+              remoteJid: jid,
+              id: msg.message.extendedTextMessage.contextInfo.stanzaId,
+              participant:
+                msg.message.extendedTextMessage.contextInfo.participant
+            }
+          : msg.key,
+        message: quoted
+      },
+      "buffer",
+      {},
+      {
+        logger,
+        reuploadRequest: sock.updateMediaMessage
+      }
+    )
+
+    await sock.sendImageAsSticker(
+      jid,
+      media,
+      msg,
+      {
+        packname,
+        author
+      }
+    )
+
+    await react(sock, jid, msg.key, "✨")
+
+  } catch (err) {
+    console.log("Take error:", err.message)
+
+    await react(sock, jid, msg.key, "❌")
+
+    reply("❌ Failed to create custom sticker")
+  }
 },
 
 stickergif: async () => {
@@ -2045,21 +2130,21 @@ pack_send: async () => {
 
       // ===== TOGGLES =====
       antidelete: async () => {
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+        if (!isOwner) return reply("❌ Bot owner only")
         group_settings.antidelete = args[0] === "on"
         saveGroupSettings()
         reply(`🧠 Anti-delete ${group_settings.antidelete ? "ON" : "OFF"}`)
       },
 
       antilink: async () => {
-        if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+        if (!isOwner) return reply("❌ Bot owner only")
         group_settings.antilink = args[0] === "on"
         saveGroupSettings()
         reply(`🔗 Anti-link ${group_settings.antilink ? "ON" : "OFF"}`)
       },
 
       antibadword: async () => {
-  if (!isAdmin && !isOwner) return reply("❌ Admin only  or Bot owner only")
+  if (!isOwner) return reply("❌ Admin only  or Bot owner only")
 
   group_settings.antibadword = args[0] === "on"
   saveGroupSettings()
@@ -2127,7 +2212,7 @@ pack_send: async () => {
   // ================= WARN USER =================
     warn: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const target = getTarget()
   if (!target) return reply("❌ Mention user")
@@ -2169,7 +2254,7 @@ pack_send: async () => {
 
 warnlist: async () => {
   if (!isGroup) return reply("❌ Group only")
-if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+if (!isOwner) return reply("❌ Bot owner only")
 
   const data = WARN_DB[jid]
   if (!data || Object.keys(data).length === 0)
@@ -2199,7 +2284,7 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 // ================= CLEAR USER WARNINGS =================
 unwarn: async () => {
   if (!isGroup) return reply("❌ Group only")
-if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+if (!isOwner) return reply("❌ Bot owner only")
 
   const target = getTarget()
   if (!target) return reply("❌ Mention user")
@@ -2215,7 +2300,7 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 
 warninfo: async () => {
   if (!isGroup) return reply("❌ Group only")
-if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+if (!isOwner) return reply("❌ Bot owner only")
 
   const target = getTarget() || sender
 
@@ -2236,7 +2321,7 @@ if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
 // ================= RESET WARNS =================
 resetwarns: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("♻️")
 
@@ -2249,7 +2334,7 @@ resetwarns: async () => {
 
       viewadmins: async () => {
   if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+    if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -2517,7 +2602,7 @@ ban: async () => {
 
   if (!number) {
     await react(sock, jid, msg.key, "error")
-    return reply("❌ Usage: .ban 2348012345678 or reply to a user")
+    return reply("❌ Usage: !ban 2348012345678 or reply to a user")
   }
 
   // 🇳🇬 Auto-fix Nigerian local format
@@ -2627,7 +2712,7 @@ banned: async () => {
 // ================= MUTE USER =================
 mute: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("🔇")
 
@@ -2652,7 +2737,7 @@ mute: async () => {
 // ================= UNMUTE USER =================
 unmute: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("🔊")
 
@@ -2696,7 +2781,7 @@ ${muted.map((u, i) => `${i + 1}. @${u.split("@")[0]}`).join("\n")}`
 // ================= DELETE ALL LINKS =================
 clearlinks: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("🧹")
 
@@ -2711,7 +2796,7 @@ clearlinks: async () => {
       // ===== TAG =====
      tageveryone: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -2746,7 +2831,7 @@ clearlinks: async () => {
 
 tagall: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -2791,7 +2876,7 @@ tagall: async () => {
 },
 tagonline: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -2830,7 +2915,7 @@ tagonline: async () => {
 },
     hidetag: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -2870,7 +2955,7 @@ tagonline: async () => {
 
       lock: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     await sock.groupSettingUpdate(jid, "announcement")
@@ -2882,7 +2967,7 @@ tagonline: async () => {
 
 unlock: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     await sock.groupSettingUpdate(jid, "not_announcement")
@@ -2895,7 +2980,7 @@ unlock: async () => {
 // ================= GROUP OPEN TEMP =================
 opentemp: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const minutes = parseInt(args[0])
   if (!minutes || minutes < 1) {
@@ -2921,7 +3006,7 @@ opentemp: async () => {
 // ================= GROUP CLOSE TEMP =================
 closetemp: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const minutes = parseInt(args[0])
   if (!minutes || minutes < 1) {
@@ -2947,7 +3032,7 @@ closetemp: async () => {
 // ===== SET OPEN TIME =====
 setopen: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const time = args[0]
 
@@ -2976,7 +3061,7 @@ setopen: async () => {
 // ===== SET CLOSE TIME =====
 setclose: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   const time = args[0]
 
@@ -3027,7 +3112,7 @@ schedule: async () => {
 // ===== DISABLE SCHEDULE =====
 scheduleoff: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("⛔")
 
@@ -3044,7 +3129,7 @@ scheduleoff: async () => {
 // ===== ENABLE SCHEDULE =====
 scheduleon: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("✅")
 
@@ -3061,7 +3146,7 @@ scheduleon: async () => {
 // ===== DELETE SCHEDULE =====
 delschedule: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   await react("🗑️")
 
@@ -3075,7 +3160,7 @@ delschedule: async () => {
 // ==== GROUP MANAGEMENT =====
 setname: async () => {
     if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+    if (!isOwner) return reply("❌ Bot owner only")
 
     const newName = args.join(" ")
     if (!newName) return reply("❌ Provide new group name")
@@ -3091,7 +3176,7 @@ setname: async () => {
 
   setdesc: async () => {
     if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+    if (!isOwner) return reply("❌ Bot owner only")
 
     const newDesc = args.join(" ")
     if (!newDesc) return reply("❌ Provide new description")
@@ -3107,7 +3192,7 @@ setname: async () => {
 
 groupinfo: async () => {
   if (!isGroup) return reply("❌ Group only")
-    if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+    if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const meta = await sock.groupMetadata(jid)
@@ -3145,7 +3230,7 @@ ${admins.map((a, i) => ` ${i + 1}. @${a.split("@")[0]}`).join("\n")}
 
 grouplink: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const code = await sock.groupInviteCode(jid)
@@ -3168,7 +3253,7 @@ grouplink: async () => {
 
 revoke: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
   await sock.groupRevokeInvite(jid)
   reply("🔄 Group link reset successful")
 },
@@ -3176,8 +3261,8 @@ revoke: async () => {
 // ================= ADD USER =================
 add: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) {
-    return reply("❌ Admin or Bot owner only")
+  if (!isOwner) {
+    return reply("❌ Bot owner only")
   }
 
   let number = args[0]?.replace(/\D/g, "") // removes +, spaces, etc.
@@ -3281,8 +3366,8 @@ ${link}
 
 invite: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) {
-    return reply("❌ Admin or Bot owner only")
+  if (!isOwner) {
+    return reply("❌ Bot owner only")
   }
 
   let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
@@ -3425,8 +3510,8 @@ ${link}
 
      promote: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) {
-    return reply("❌ Admin or Bot owner only")
+  if (!isOwner) {
+    return reply("❌ Bot owner only")
   }
 
   const target = getTarget()
@@ -3479,8 +3564,8 @@ ${link}
 
 demote: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) {
-    return reply("❌ Admin or Bot owner only")
+  if (!isOwner) {
+    return reply("❌ Bot owner only")
   }
 
   const target = getTarget()
@@ -3535,7 +3620,7 @@ demote: async () => {
 
 // promote: async () => {
 //   if (!isGroup) return reply("❌ Group only")
-//   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+//   if (!isOwner) return reply("❌ Bot owner only")
 
 //   // supports mention, reply, or raw number
 //   let number =
@@ -3573,7 +3658,7 @@ demote: async () => {
 // // ================= DEMOTE USER =================
 // demote: async () => {
 //   if (!isGroup) return reply("❌ Group only")
-//   if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+//   if (!isOwner) return reply("❌ Bot owner only")
 
 //   // supports mention, reply, or raw number
 //   let number =
@@ -3609,59 +3694,302 @@ demote: async () => {
 // },
 
 approve: async () => {
-  if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("Mention user")
+  if (!isGroup) {
+    await react(sock, jid, msg.key, "❌")
+    return reply("❌ Group only")
+  }
+
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "🚫")
+    return reply("❌ Bot owner only")
+  }
+
+  let target =
+    msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] ||
+    msg.message?.extendedTextMessage?.contextInfo?.participant ||
+    args[0]
+
+  if (!target) {
+    await react(sock, jid, msg.key, "❓")
+    return reply("❌ Mention, reply, or type a number")
+  }
+
+  target = String(target).replace(/\D/g, "")
+
+  if (target.startsWith("0")) {
+    target = "234" + target.slice(1)
+  }
+
+  if (target.length < 10) {
+    await react(sock, jid, msg.key, "⚠️")
+    return reply("❌ Invalid number")
+  }
+
+  target = normalizeJid(
+    target.includes("@s.whatsapp.net")
+      ? target
+      : `${target}@s.whatsapp.net`
+  )
 
   try {
     await sock.groupRequestParticipantsUpdate(jid, [target], "approve")
-    reply("✅ Request approved")
-  } catch {
-    reply("❌ Failed (ensure join approval is ON)")
+
+    // ✅ Success reaction options:
+    // ✅ = approved
+    // 🎉 = welcome
+    // 👍 = accepted
+    await react(sock, jid, msg.key, "✅")
+
+    reply(`✅ Approved: ${target.split("@")[0]}`)
+
+  } catch (err) {
+    console.log("Approve error:", err.message)
+
+    // ❌ Failure reaction options:
+    // ❌ = failed
+    // ⚠️ = issue
+    // 🚫 = denied
+    await react(sock, jid, msg.key, "❌")
+
+    reply("❌ Failed (ensure join approval is ON or request exists)")
   }
 },
 
 approveall: async () => {
-  if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isGroup) {
+    await react(sock, jid, msg.key, "❌")
+    return reply("❌ Group only")
+  }
+
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "🚫")
+    return reply("❌ Bot owner only")
+  }
 
   try {
     const requests = await sock.groupRequestParticipantsList(jid)
 
     if (!requests || requests.length === 0) {
+      await react(sock, jid, msg.key, "📭")
       return reply("❌ No pending join requests")
     }
 
-    const users = requests.map(u => u.jid)
+    const users = requests
+      .map(u => normalizeJid(u.jid))
+      .filter(Boolean)
+
+    if (!users.length) {
+      await react(sock, jid, msg.key, "⚠️")
+      return reply("❌ No valid pending requests found")
+    }
 
     await sock.groupRequestParticipantsUpdate(jid, users, "approve")
 
+    // ✅ Success reaction options:
+    // ✅ = approved
+    // 🎉 = batch success
+    // 🚀 = mass approval
+    await react(sock, jid, msg.key, "🎉")
+
     reply(`✅ Approved ${users.length} join request(s)`)
+
   } catch (e) {
-    console.log(e)
+    console.log("ApproveAll error:", e.message)
+
+    // ❌ Failure reaction options:
+    // ❌ = failed
+    // ⚠️ = issue
+    // 🚫 = denied
+    await react(sock, jid, msg.key, "❌")
+
     reply("❌ Failed to approve requests (maybe join approval is OFF)")
   }
 },
 
+
 reject: async () => {
-  if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
-  const target = normalizeJid(getTarget())
-  if (!target) return reply("Mention user")
+  if (!isGroup) {
+    await react(sock, jid, msg.key, "❌")
+    return reply("❌ Group only")
+  }
+
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "🚫")
+    return reply("❌ Bot owner only")
+  }
+
+  // ================= TARGET RESOLVER =================
+  let target =
+    // Mentioned user
+    msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] ||
+
+    // Quoted user
+    msg.message?.extendedTextMessage?.contextInfo?.participant ||
+
+    // Raw number from command
+    args[0]
+
+  if (!target) {
+    await react(sock, jid, msg.key, "❓")
+    return reply("❌ Mention, reply, or type a number")
+  }
+
+  // ================= NORMALIZE NUMBER =================
+  target = String(target).replace(/\D/g, "")
+
+  // Auto-convert local Nigerian format
+  if (target.startsWith("0")) {
+    target = "234" + target.slice(1)
+  }
+
+  // Validate basic number length
+  if (target.length < 10) {
+    await react(sock, jid, msg.key, "⚠️")
+    return reply("❌ Invalid number")
+  }
+
+  // Convert to WhatsApp JID
+  target = normalizeJid(
+    target.includes("@s.whatsapp.net")
+      ? target
+      : `${target}@s.whatsapp.net`
+  )
 
   try {
     await sock.groupRequestParticipantsUpdate(jid, [target], "reject")
-    reply("❌ Request rejected")
-  } catch {
-    reply("❌ Failed (ensure join approval is ON)")
+
+    // ❌ Success reject reaction options:
+    // ❌ = rejected
+    // 🚫 = denied
+    // ⛔ = blocked request
+    await react(sock, jid, msg.key, "🚫")
+
+    reply(`❌ Rejected: ${target.split("@")[0]}`)
+
+  } catch (err) {
+    console.log("Reject error:", err.message)
+
+    // ⚠️ Failure reaction options:
+    // ⚠️ = issue
+    // ❌ = failed
+    await react(sock, jid, msg.key, "⚠️")
+
+    reply("❌ Failed (ensure join approval is ON or request exists)")
+  }
+},
+
+rejectall: async () => {
+  if (!isGroup) {
+    await react(sock, jid, msg.key, "❌")
+    return reply("❌ Group only")
+  }
+
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "🚫")
+    return reply("❌ Bot owner only")
+  }
+
+  try {
+    const requests = await sock.groupRequestParticipantsList(jid)
+
+    if (!requests || requests.length === 0) {
+      await react(sock, jid, msg.key, "📭")
+      return reply("❌ No pending join requests")
+    }
+
+    const users = requests
+      .map(u => normalizeJid(u.jid))
+      .filter(Boolean)
+
+    if (!users.length) {
+      await react(sock, jid, msg.key, "⚠️")
+      return reply("❌ No valid pending requests found")
+    }
+
+    await sock.groupRequestParticipantsUpdate(jid, users, "reject")
+
+    // 🚫 Success reject-all reaction options:
+    // 🚫 = mass rejected
+    // ❌ = all denied
+    // ⛔ = blocked batch
+    await react(sock, jid, msg.key, "🚫")
+
+    reply(`❌ Rejected ${users.length} join request(s)`)
+
+  } catch (e) {
+    console.log("RejectAll error:", e.message)
+
+    // ⚠️ Failure reaction options:
+    // ⚠️ = issue
+    // ❌ = failed
+    await react(sock, jid, msg.key, "⚠️")
+
+    reply("❌ Failed to reject requests (maybe join approval is OFF)")
+  }
+},
+
+requests: async () => {
+  if (!isGroup) {
+    await react(sock, jid, msg.key, "❌")
+    return reply("❌ Group only")
+  }
+
+  if (!isOwner) {
+    await react(sock, jid, msg.key, "🚫")
+    return reply("❌ Bot owner only")
+  }
+
+  await react(sock, jid, msg.key, "⏳")
+
+  try {
+    const requests = await sock.groupRequestParticipantsList(jid)
+
+    if (!requests || requests.length === 0) {
+      await react(sock, jid, msg.key, "📭")
+      return reply("❌ No pending join requests")
+    }
+
+    let text = `📨 *PENDING JOIN REQUESTS* (${requests.length})\n\n`
+
+    requests.forEach((user, i) => {
+      const number = user.jid.split("@")[0]
+
+      text += `*${i + 1}.* wa.me/${number}\n`
+
+      if (user.request_method) {
+        text += `   🌐 Method: ${user.request_method}\n`
+      }
+
+      if (user.request_time) {
+        const time = new Date(user.request_time * 1000).toLocaleString()
+        text += `   🕒 Time: ${time}\n`
+      }
+
+      text += "\n"
+    })
+
+    text += `✅ Use ${prefix}approve <number>\n`
+    text += `🚫 Use ${prefix}reject <number>\n`
+    text += `🎉 Use ${prefix}approveall\n`
+    text += `⛔ Use ${prefix}rejectall`
+
+    await react(sock, jid, msg.key, "📨")
+
+    reply(text)
+
+  } catch (err) {
+    console.log("Requests error:", err.message)
+
+    await react(sock, jid, msg.key, "⚠️")
+
+    reply("❌ Failed to fetch join requests (ensure join approval is ON)")
   }
 },
 
 // ================= ANTI STATUS =================
 antistatus: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   group_settings.antistatus = args[0] === "on"
   saveGroupSettings()
@@ -3671,7 +3999,7 @@ antistatus: async () => {
 
 antistatusmention: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isAdmin && !isOwner) return reply("❌ Admin or Bot owner only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   group_settings.antistatus_mention = args[0] === "on"
   saveGroupSettings()
@@ -3747,6 +4075,70 @@ alive: async () => {
 
 📊 Status: ACTIVE
 `)
+},
+
+help: async () => {
+  await react(sock, jid, msg.key, "📖")
+
+  const text = `
+📖 𝘾𝙊𝙈𝙈𝘼𝙉𝘿 𝙂𝙐𝙄𝘿𝙀
+
+👤 𝙃𝙤𝙬 𝙩𝙤 𝙪𝙨𝙚 𝙗𝙤𝙩:
+➤ Type commands with prefix: ${prefix}
+➤ Example: ${prefix}menu
+
+📌 𝙀𝙭𝙖𝙢𝙥𝙡𝙚𝙨:
+➤ ${prefix}tagall
+➤ ${prefix}kick @user
+➤ ${prefix}approve
+➤ ${prefix}rejectall
+
+⚙️ 𝙏𝙞𝙥𝙨:
+➤ Reply to messages for actions
+➤ Mention users where needed
+➤ Use numbers for some commands
+
+🤖 𝘽𝙤𝙩 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨:
+➤ Groups
+➤ DMs
+➤ Admin controls
+➤ Auto systems
+
+💡 𝙐𝙨𝙚 ${prefix}menu 𝙩𝙤 𝙨𝙚𝙚 𝙖𝙡𝙡 𝙘𝙤𝙢𝙢𝙖𝙣𝙙𝙨
+`
+
+  reply(text)
+},
+
+runtime: async () => {
+  await react(sock, jid, msg.key, "⏱️")
+
+  try {
+    const uptime = process.uptime() // in seconds
+
+    const days = Math.floor(uptime / 86400)
+    const hours = Math.floor((uptime % 86400) / 3600)
+    const minutes = Math.floor((uptime % 3600) / 60)
+    const seconds = Math.floor(uptime % 60)
+
+    const text = `
+⏱️ 𝘽𝙊𝙏 𝙍𝙐𝙉𝙏𝙄𝙈𝙀
+
+📆 Days: ${days}
+⏰ Hours: ${hours}
+⏳ Minutes: ${minutes}
+⏱️ Seconds: ${seconds}
+
+⚡ Status: Online
+`
+
+    reply(text)
+
+  } catch (err) {
+    console.log("Runtime error:", err.message)
+    await react(sock, jid, msg.key, "❌")
+    reply("❌ Failed to get runtime")
+  }
 },
 
 mode: async () => {
