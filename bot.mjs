@@ -3391,7 +3391,7 @@ invite: async () => {
 🔗 Join Link:
 ${link}
 
-⚡ Powered by Bot`,
+⚡ POWERED BY GIBBORLEE BOT`,
         mentions: [sender]
       }
     )
@@ -3435,20 +3435,36 @@ ${link}
 // ================= KICK USER =================
  kick: async () => {
   if (!isGroup) return reply("❌ Group only")
-  if (!isOwner && !isAdmin) return reply("❌ Owner/Admin only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
-  let number = args[0]?.replace(/\D/g, "") // remove spaces, +, symbols
+  let user
 
-  if (!number) {
-    return reply("❌ Usage: !kick 2348012345678")
+  // 🔥 1. REPLY SUPPORT
+  const quoted = msg.message?.extendedTextMessage?.contextInfo?.participant
+  if (quoted) {
+    user = quoted
   }
 
-  // 🇳🇬 Auto-fix local Nigerian format
-  if (number.startsWith("0")) {
-    number = "234" + number.slice(1)
+  // 🔥 2. MENTION SUPPORT (@tag)
+  else if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length) {
+    user = msg.message.extendedTextMessage.contextInfo.mentionedJid[0]
   }
 
-  const user = number + "@s.whatsapp.net"
+  // 🔥 3. NUMBER SUPPORT
+  else if (args[0]) {
+    let number = args[0].replace(/\D/g, "")
+
+    // 🇳🇬 fix Nigeria format
+    if (number.startsWith("0")) {
+      number = "234" + number.slice(1)
+    }
+
+    user = number + "@s.whatsapp.net"
+  }
+
+  if (!user) {
+    return reply("❌ Usage:\n• Reply user\n• Tag user\n• !kick 2348012345678")
+  }
 
   try {
     await sock.groupParticipantsUpdate(
@@ -3460,30 +3476,31 @@ ${link}
     await sock.sendMessage(
       jid,
       {
-        text:
-`👢 *USER REMOVED*
+        text: `
+👢 *USER REMOVED*
 
-🚫 User: @${number}
+🚫 User: @${user.split("@")[0]}
 👑 By: @${sender.split("@")[0]}
-📛 Action: Kick Successful`,
+📛 Action: Kick Successful
+        `,
         mentions: [user, sender]
       },
       { quoted: msg }
     )
 
   } catch (e) {
-
-    console.log("Remove error:", e)
+    console.log("Kick error:", e)
 
     await sock.sendMessage(
       jid,
       {
-        text:
-`❌ *KICK FAILED*
+        text: `
+❌ *KICK FAILED*
 
-🚫 User: @${number}
+🚫 User: @${user.split("@")[0]}
 ⚠️ Reason: Could not remove user
-👑 By: @${sender.split("@")[0]}`,
+👑 By: @${sender.split("@")[0]}
+        `,
         mentions: [user, sender]
       },
       { quoted: msg }
@@ -3741,53 +3758,6 @@ approve: async () => {
   }
 },
 
-approveall: async () => {
-  if (!isGroup) {
-    await react(sock, jid, msg.key, "❌")
-    return reply("❌ Group only")
-  }
-
-  if (!isOwner) {
-    await react(sock, jid, msg.key, "🚫")
-    return reply("❌ Bot owner only")
-  }
-
-  try {
-    const requests = await sock.groupRequestParticipantsList(jid)
-
-    console.log("JOIN REQUESTS:", requests)
-
-    if (!requests || requests.length === 0) {
-      await react(sock, jid, msg.key, "📭")
-      return reply("❌ No pending join requests")
-    }
-
-    // ✅ FIX: handle multiple possible structures
-    const users = requests.map(r => {
-      return normalizeJid(r.jid || r || r.participant)
-    }).filter(Boolean)
-
-    if (users.length === 0) {
-      await react(sock, jid, msg.key, "⚠️")
-      return reply("❌ No valid requests found")
-    }
-
-    await sock.groupRequestParticipantsUpdate(jid, users, "approve")
-
-    await react(sock, jid, msg.key, "🎉")
-
-    reply(`✅ Approved ${users.length} join request(s)`)
-
-  } catch (e) {
-    console.log("ApproveAll Error FULL:", e)
-
-    await react(sock, jid, msg.key, "❌")
-
-    reply("❌ Failed (check logs or join approval setting)")
-  }
-},
-
-
 reject: async () => {
   if (!isGroup) {
     await react(sock, jid, msg.key, "❌")
@@ -3859,53 +3829,92 @@ reject: async () => {
   }
 },
 
-rejectall: async () => {
-  if (!isGroup) {
-    await react(sock, jid, msg.key, "❌")
-    return reply("❌ Group only")
-  }
-
-  if (!isOwner) {
-    await react(sock, jid, msg.key, "🚫")
-    return reply("❌ Bot owner only")
-  }
+approveall: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Bot owner only")
 
   try {
     const requests = await sock.groupRequestParticipantsList(jid)
 
-    console.log("REJECT REQUESTS:", requests)
-
     if (!requests || requests.length === 0) {
-      await react(sock, jid, msg.key, "📭")
       return reply("❌ No pending join requests")
     }
 
-    // ✅ SAFE EXTRACTION (handles all Baileys formats)
-    const users = (requests || [])
-      .map(r => {
-        if (typeof r === "string") return r
-        return r?.jid || r?.participant || r
-      })
-      .map(normalizeJid)
-      .filter(Boolean)
+    const users = requests.map(u => u.jid)
 
-    if (!users.length) {
-      await react(sock, jid, msg.key, "⚠️")
-      return reply("❌ No valid pending requests found")
+    await sock.groupRequestParticipantsUpdate(jid, users, "approve")
+
+    reply(`✅ Approved ${users.length} join request(s)`)
+  } catch (e) {
+    console.log(e)
+    reply("❌ Failed to approve requests (maybe join approval is OFF)")
+  }
+},
+
+rejectall: async () => {
+  if (!isGroup) return reply("❌ Group only")
+  if (!isOwner) return reply("❌ Bot owner only")
+
+  try {
+    const requests = await sock.groupRequestParticipantsList(jid)
+
+    console.log("RAW REQUESTS:", requests)
+
+    if (!requests || requests.length === 0) {
+      return reply("❌ No pending join requests")
     }
 
-    await sock.groupRequestParticipantsUpdate(jid, users, "reject")
+    // 🔥 SAFE NORMALIZATION (handles ALL Baileys formats)
+    const users = []
 
-    await react(sock, jid, msg.key, "🚫")
+    for (const r of requests) {
+      if (!r) continue
 
-    reply(`❌ Rejected ${users.length} join request(s)`)
+      let id = null
+
+      if (typeof r === "string") {
+        id = r
+      } else {
+        id = r.jid || r.participant || r.id || null
+      }
+
+      if (id) {
+        const clean = normalizeJid(id)
+        if (clean) users.push(clean)
+      }
+    }
+
+    if (users.length === 0) {
+      return reply("❌ No valid requests found")
+    }
+
+    // 🔥 REMOVE DUPLICATES (VERY IMPORTANT)
+    const uniqueUsers = [...new Set(users)]
+
+    // 🔥 SAFE UPDATE (try-catch per safety)
+    try {
+      await sock.groupRequestParticipantsUpdate(
+        jid,
+        uniqueUsers,
+        "reject"
+      )
+    } catch (err) {
+      console.log("Update error:", err)
+
+      // fallback attempt (some Baileys versions require "decline")
+      await sock.groupRequestParticipantsUpdate(
+        jid,
+        uniqueUsers,
+        "decline"
+      )
+    }
+
+    reply(`❌ Rejected ${uniqueUsers.length} join request(s)`)
 
   } catch (e) {
-    console.log("RejectAll Error FULL:", e)
+    console.log("RejectAll Fatal Error:", e)
 
-    await react(sock, jid, msg.key, "⚠️")
-
-    reply("❌ Failed (check logs or join approval setting)")
+    reply("❌ Failed (join approval may be OFF or unsupported)")
   }
 },
 
